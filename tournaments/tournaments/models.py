@@ -209,7 +209,7 @@ class Groups(Mode):
         return row
 
     @property
-    def standings(self):
+    def standings(self): ## FIXME: this needs to account the different groups
         standings = [self.get_standings(participant) for participant in self.tournament.participants]
         standings.sort(key = lambda row: (row['points'], row['matches'], row['participant'].id), reverse = True)
         return standings
@@ -225,6 +225,24 @@ class Knockout(Mode):
 
     def create_fixtures(self, participants):
         assert len(participants) >= 2
+        levels = math.ceil(math.log2(len(participants)))
+
+        # Identify fixtures by their path (which, in a binary tree, corresponds to the index of the node in binary representation, starting from `1` for the root).
+        remaining_participants = list(participants)
+        last_fixture_path = len(participants) - 1
+        for fixture_path in range(1, last_fixture_path + 1):
+            level = levels - int(math.log2(fixture_path)) - 1
+
+            player1 = None if fixture_path * 2 <= last_fixture_path else remaining_participants.pop()
+            player2 = None if fixture_path * 2 <  last_fixture_path else remaining_participants.pop()
+
+            Fixture.objects.create(
+                mode    = self,
+                level   = level,
+                player1 = player1,
+                player2 = player2)
+
+        assert len(remaining_participants) == 0, remaining_participants
 
     @property
     def placements(self):
@@ -235,8 +253,8 @@ class Fixture(models.Model):
 
     mode    = models.ForeignKey('Mode', on_delete = models.CASCADE, related_name = 'fixtures')
     level   = models.PositiveSmallIntegerField()
-    player1 = models.ForeignKey('auth.User', on_delete = models.PROTECT, related_name = 'fixtures1')
-    player2 = models.ForeignKey('auth.User', on_delete = models.PROTECT, related_name = 'fixtures2')
+    player1 = models.ForeignKey('auth.User', on_delete = models.PROTECT, related_name = 'fixtures1', null = True)
+    player2 = models.ForeignKey('auth.User', on_delete = models.PROTECT, related_name = 'fixtures2', null = True)
     score1  = models.PositiveSmallIntegerField(null = True)
     score2  = models.PositiveSmallIntegerField(null = True)
     confirmations = models.ManyToManyField('auth.User', related_name = 'fixture_confirmations')

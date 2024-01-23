@@ -9,6 +9,7 @@ from tournaments.models import (
     Tournament,
     Participation,
     Groups,
+    Knockout,
     Fixture,
 )
 
@@ -151,7 +152,7 @@ def assert_division_schedule_validity(test, schedule, with_returns):
         raise
 
 
-class GroupsTest(TestCase):
+class ModeTestBase:
 
     def setUp(self):
         self.tournament = Tournament.objects.create(name = 'Test', podium = list())
@@ -175,9 +176,10 @@ class GroupsTest(TestCase):
 
     def _group_fixtures_by_level(self, mode):
         actual_fixtures = dict()
+        pid = lambda p: None if p is None else p.id
         for fixture in mode.fixtures.all():
             actual_fixtures.setdefault(fixture.level, list())
-            actual_fixtures[fixture.level].append((fixture.player1.id, fixture.player2.id))
+            actual_fixtures[fixture.level].append((pid(fixture.player1), pid(fixture.player2)))
         return actual_fixtures
 
     def _confirm_fixture(self, fixture, score1 = 0, score2 = 0):
@@ -188,6 +190,9 @@ class GroupsTest(TestCase):
         fixture.score1 = score1
         fixture.score2 = score2
         fixture.save()
+
+
+class GroupsTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_minimal(self):
         mode = Groups.objects.create(tournament = self.tournament, min_group_size = 2, max_group_size = 2)
@@ -528,3 +533,54 @@ class GroupsTest(TestCase):
                 mode.create_fixtures(self.participants[:n])
                 for fixture in mode.fixtures.all():
                     self.assertEqual(fixture.required_confirmations_count, expected_counts[n])
+
+class KnockoutTest(ModeTestBase, TestCase):
+
+    def test_create_fixtures_2participants(self):
+        mode = Knockout.objects.create(tournament = self.tournament)
+        mode.create_fixtures(self.participants[:2])
+
+        # Verify fixtures.
+        actual_fixtures = self._group_fixtures_by_level(mode)
+        expected_fixtures = {
+            0: [(2, 1)],
+        }
+        self.assertEqual(actual_fixtures, expected_fixtures)
+
+    def test_create_fixtures_4participants(self):
+        mode = Knockout.objects.create(tournament = self.tournament)
+        mode.create_fixtures(self.participants[:4])
+
+        # Verify fixtures.
+        actual_fixtures = self._group_fixtures_by_level(mode)
+        expected_fixtures = {
+            0: [(4, 3), (2, 1)],
+            1: [(None, None)]
+        }
+        self.assertEqual(actual_fixtures, expected_fixtures)
+
+    def test_create_fixtures_5participants(self):
+        mode = Knockout.objects.create(tournament = self.tournament)
+        mode.create_fixtures(self.participants[:5])
+
+        # Verify fixtures.
+        actual_fixtures = self._group_fixtures_by_level(mode)
+        expected_fixtures = {
+            0: [(2, 1)],
+            1: [(None, 5), (4, 3)],
+            2: [(None, None)]
+        }
+        self.assertEqual(actual_fixtures, expected_fixtures)
+
+    def test_create_fixtures_6participants(self):
+        mode = Knockout.objects.create(tournament = self.tournament)
+        mode.create_fixtures(self.participants[:6])
+
+        # Verify fixtures.
+        actual_fixtures = self._group_fixtures_by_level(mode)
+        expected_fixtures = {
+            0: [(4, 3), (2, 1)],
+            1: [(None, None), (6, 5)],
+            2: [(None, None)]
+        }
+        self.assertEqual(actual_fixtures, expected_fixtures)
