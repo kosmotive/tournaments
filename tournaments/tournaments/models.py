@@ -275,7 +275,8 @@ class Knockout(Mode):
 
     @property
     def placements(self):
-        pass
+        final, semifinal1, semifinal2 = self.fixtures.all()[:3]
+        return [final.winner] + [fixture.loser for fixture in self.fixtures.all()]
 
 
 class Fixture(models.Model):

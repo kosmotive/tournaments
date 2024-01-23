@@ -742,6 +742,17 @@ class KnockoutTest(ModeTestBase, TestCase):
         self.assertEqual(mode.current_level, 3)
         self.assertIsNone(mode.current_fixtures)
 
+    def test_placements(self):
+        mode = self.test_propagate()
+        actual_placements = [user.id for user in mode.placements]
+        expected_placements = [1, 4, 5, 3, 2]
+        self.assertEqual(actual_placements, expected_placements)
+
+    def test_placements_empty(self):
+        mode = self.test_create_fixtures_5participants()
+        expected_placements = [None, None, None, None, None]
+        self.assertEqual(mode.placements, expected_placements)
+
 
 class FixtureTest(TestCase):
 
