@@ -1,0 +1,11 @@
+/venv
+/envvars
+/deployed
+.DS_Store
+*.swp
+/tournaments/db.sqlite3
+/tournaments/static-deployed
+/tournaments/logs
+/tournaments/*/migrations
+__pycache__
+*.pyc
