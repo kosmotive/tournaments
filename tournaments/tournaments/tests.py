@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 
 import numpy as np
@@ -232,6 +233,7 @@ class GroupsTest(ModeTestBase, TestCase):
             2: [(3, 1), (4, 2)]
         }
         self.assertEqual(actual_fixtures, expected_fixtures)
+
         return mode
 
     def test_levels(self):
@@ -534,6 +536,7 @@ class GroupsTest(ModeTestBase, TestCase):
             ],
         ]
         self.assertEqual(mode.standings, expected_standings)
+
         return mode
 
     def test_placements(self):
@@ -585,6 +588,8 @@ class KnockoutTest(ModeTestBase, TestCase):
         }
         self.assertEqual(actual_fixtures, expected_fixtures)
 
+        return mode
+
     def test_create_fixtures_4participants(self):
         mode = Knockout.objects.create(tournament = self.tournament)
         mode.create_fixtures(self.participants[:4])
@@ -610,6 +615,8 @@ class KnockoutTest(ModeTestBase, TestCase):
         }
         self.assertEqual(actual_fixtures, expected_fixtures)
 
+        return mode
+
     def test_create_fixtures_6participants(self):
         mode = Knockout.objects.create(tournament = self.tournament)
         mode.create_fixtures(self.participants[:6])
@@ -622,3 +629,155 @@ class KnockoutTest(ModeTestBase, TestCase):
             2: [(None, None)]
         }
         self.assertEqual(actual_fixtures, expected_fixtures)
+
+    def test_check_fixture(self):
+        mode = self.test_create_fixtures_2participants()
+        fixture = mode.fixtures.get()
+
+        # Verify that draws are forbidden.
+        fixture.score = (10, 10)
+        self.assertRaises(ValidationError, fixture.clean)
+
+        # Verify that other results are allowed.
+        fixture.score = (10, 12)
+        fixture.clean()
+        fixture.save()
+        fixture.refresh_from_db()
+        self.assertEqual(fixture.score1, 10)
+        self.assertEqual(fixture.score2, 12)
+
+    def test_propagate(self):
+        mode = self.test_create_fixtures_5participants()
+        playoff = mode.current_fixtures.get()
+
+        # Propagate play-off (user-2 vs. user-1)
+        playoff.score = (10, 12)
+        playoff.save()
+        semifinal1 = mode.propagate(playoff)
+
+        # Verify fixtures after play-off.
+        actual_fixtures = self._group_fixtures_by_level(mode)
+        expected_fixtures = {
+            0: [(2, 1)],
+            1: [(1, 5), (4, 3)],
+            2: [(None, None)]
+        }
+        self.assertEqual(actual_fixtures, expected_fixtures)
+
+        # Propagate 1st seminfal (user-1 vs. user-5)
+        semifinal1.score = (12, 10)
+        semifinal1.save()
+        final = mode.propagate(semifinal1)
+
+        # Verify fixtures after 1st semifinal.
+        actual_fixtures = self._group_fixtures_by_level(mode)
+        expected_fixtures = {
+            0: [(2, 1)],
+            1: [(1, 5), (4, 3)],
+            2: [(1, None)]
+        }
+        self.assertEqual(actual_fixtures, expected_fixtures)
+
+        # Propagate 2nd seminfal (user-4 vs. user-3)
+        semifinal2 = mode.fixtures.get(player1 = User.objects.get(id = 4), player2 = User.objects.get(id = 3))
+        semifinal2.score = (12, 10)
+        semifinal2.save()
+        final = mode.propagate(semifinal2)
+
+        # Verify fixtures after 2nd semifinal.
+        actual_fixtures = self._group_fixtures_by_level(mode)
+        expected_fixtures = {
+            0: [(2, 1)],
+            1: [(1, 5), (4, 3)],
+            2: [(1, 4)]
+        }
+        self.assertEqual(actual_fixtures, expected_fixtures)
+
+        # Propagate final (user-1 vs. user-4)
+        final.score = (12, 10)
+        final.save()
+        result = mode.propagate(final)
+        self.assertIsNone(result)
+
+        return mode
+
+    def test_current_fixtures(self):
+        mode = self.test_propagate()
+
+        # Test on level 0.
+        self.assertEqual(mode.current_level, 0)
+        self.assertEqual(mode.current_fixtures.count(), 1)
+
+        fixture = mode.current_fixtures.get()
+        self.assertEqual(fixture.player1.id, 2)
+        self.assertEqual(fixture.player2.id, 1)
+
+        self._confirm_fixture(fixture)
+
+        # Test on level 1.
+        self.assertEqual(mode.current_level, 1)
+        self.assertEqual(mode.current_fixtures.count(), 2)
+
+        fixtures = mode.current_fixtures.all()
+        self.assertEqual(fixtures[0].player1.id, 1)
+        self.assertEqual(fixtures[0].player2.id, 5)
+        self.assertEqual(fixtures[1].player1.id, 4)
+        self.assertEqual(fixtures[1].player2.id, 3)
+
+        self._confirm_fixture(fixtures[0])
+        self.assertEqual(mode.current_level, 1)
+        self._confirm_fixture(fixtures[1])
+
+        # Test on level 2.
+        self.assertEqual(mode.current_level, 2)
+        self.assertEqual(mode.current_fixtures.count(), 1)
+
+        fixture = mode.current_fixtures.get()
+        self.assertEqual(fixture.player1.id, 1)
+        self.assertEqual(fixture.player2.id, 4)
+
+        self._confirm_fixture(fixture)
+
+        # Test on level 3.
+        self.assertEqual(mode.current_level, 3)
+        self.assertIsNone(mode.current_fixtures)
+
+
+class FixtureTest(TestCase):
+
+    def setUp(self):
+        self.tournament = Tournament.objects.create(name = 'Test', podium = list())
+        self.knockout   = Knockout.objects.create(tournament = self.tournament)
+        self.players    = [
+            User.objects.create(
+                id = user_idx + 1,
+                username = f'user-{user_idx + 1}',
+                password =  'password')
+            for user_idx in range(2)
+        ]
+        self.fixture = Fixture.objects.create(mode = self.knockout, level = 0, position = 0, player1 = self.players[0], player2 = self.players[1])
+
+    def test_score(self):
+        self.assertEqual(self.fixture.score, (None, None))
+        self.fixture.score = (10, 12)
+        self.assertEqual(self.fixture.score, (10, 12))
+        self.fixture.score = '12:10'
+        self.assertEqual(self.fixture.score, (12, 10))
+
+    def test_winner(self):
+        self.assertIsNone(self.fixture.winner)
+        self.fixture.score = (10, 12)
+        self.assertEqual(self.fixture.winner.id, self.players[1].id)
+        self.fixture.score = (12, 10)
+        self.assertEqual(self.fixture.winner.id, self.players[0].id)
+        self.fixture.score = (10, 10)
+        self.assertIsNone(self.fixture.winner)
+
+    def test_loser(self):
+        self.assertIsNone(self.fixture.loser)
+        self.fixture.score = (10, 12)
+        self.assertEqual(self.fixture.loser.id, self.players[0].id)
+        self.fixture.score = (12, 10)
+        self.assertEqual(self.fixture.loser.id, self.players[1].id)
+        self.fixture.score = (10, 10)
+        self.assertIsNone(self.fixture.loser)

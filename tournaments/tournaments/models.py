@@ -1,6 +1,7 @@
 import math
 
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import CheckConstraint, Q, Max
 
@@ -62,8 +63,10 @@ class Participation(models.Model):
 
     class Meta:
         ordering = ('tournament', 'slot_id')
-        unique_together = ('tournament', 'slot_id')
-        unique_together = ('tournament', 'user')
+        unique_together = [
+            ('tournament', 'slot_id'),
+            ('tournament', 'user'),
+        ]
 
 
 class Mode(models.Model):
@@ -102,6 +105,9 @@ class Mode(models.Model):
     @property
     def is_finished(self):
         return self.current_level == self.levels
+
+    def check_fixture(self, fixture):
+        pass
 
 
 def split_into_groups(items, min_group_size, max_group_size):
@@ -174,14 +180,15 @@ class Groups(Mode):
 
             # Schedule fixtures for each group.
             for group in groups:
-                for pidx1, pidx2 in pairings:
+                for position, (pidx1, pidx2) in enumerate(pairings):
 
                     if pidx1 >= len(group) or pidx2 >= len(group): continue
                     Fixture.objects.create(
-                        mode    = self,
-                        level   = level,
-                        player1 = group[pidx1],
-                        player2 = group[pidx2],
+                        mode     = self,
+                        level    = level,
+                        position = position,
+                        player1  = group[pidx1],
+                        player2  = group[pidx2],
                     )
 
     def get_standings(self, participant):
@@ -242,12 +249,29 @@ class Knockout(Mode):
             player2 = None if fixture_path * 2 <  last_fixture_path else remaining_participants.pop()
 
             Fixture.objects.create(
-                mode    = self,
-                level   = level,
-                player1 = player1,
-                player2 = player2)
+                mode     = self,
+                level    = level,
+                position = fixture_path,
+                player1  = player1,
+                player2  = player2)
 
         assert len(remaining_participants) == 0, remaining_participants
+
+    def propagate(self, fixture):
+        assert fixture.mode.id == self.id
+        assert fixture.winner is not None
+        if fixture.position == 1: return None
+        parent_fixture = self.fixtures.get(position = fixture.position // 2)
+        if fixture.position % 2 == 0:
+            parent_fixture.player1 = fixture.winner
+        else:
+            parent_fixture.player2 = fixture.winner
+        parent_fixture.save()
+        return parent_fixture
+
+    def check_fixture(self, fixture):
+        if fixture.score1 is not None and fixture.score2 is not None and fixture.score1 == fixture.score2:
+            raise ValidationError('draws are not allowed in knockout mode')
 
     @property
     def placements(self):
@@ -256,12 +280,13 @@ class Knockout(Mode):
 
 class Fixture(models.Model):
 
-    mode    = models.ForeignKey('Mode', on_delete = models.CASCADE, related_name = 'fixtures')
-    level   = models.PositiveSmallIntegerField()
-    player1 = models.ForeignKey('auth.User', on_delete = models.PROTECT, related_name = 'fixtures1', null = True)
-    player2 = models.ForeignKey('auth.User', on_delete = models.PROTECT, related_name = 'fixtures2', null = True)
-    score1  = models.PositiveSmallIntegerField(null = True)
-    score2  = models.PositiveSmallIntegerField(null = True)
+    mode     = models.ForeignKey('Mode', on_delete = models.CASCADE, related_name = 'fixtures')
+    level    = models.PositiveSmallIntegerField()
+    position = models.PositiveSmallIntegerField()
+    player1  = models.ForeignKey('auth.User', on_delete = models.PROTECT, related_name = 'fixtures1', null = True)
+    player2  = models.ForeignKey('auth.User', on_delete = models.PROTECT, related_name = 'fixtures2', null = True)
+    score1   = models.PositiveSmallIntegerField(null = True)
+    score2   = models.PositiveSmallIntegerField(null = True)
     confirmations = models.ManyToManyField('auth.User', related_name = 'fixture_confirmations')
 
     class Meta:
@@ -270,6 +295,26 @@ class Fixture(models.Model):
                     check = (Q(score1__isnull = True) & Q(score2__isnull = True)) | (Q(score1__isnull = False) & Q(score2__isnull = False)),
                     name = 'score1 and score2 must be both null or neither')
             ]
+
+    def clean(self):
+        super(Fixture, self).clean()
+        self.mode.check_fixture(self)
+
+    @property
+    def score(self):
+        return self.score1, self.score2
+
+    @score.setter
+    def score(self, value):
+        if isinstance(value, tuple):
+            self.score1 = int(value[0])
+            self.score2 = int(value[1])
+        elif isinstance(value, str):
+            value = value.split(':')
+            self.score1 = int(value[0])
+            self.score2 = int(value[1])
+        else:
+            raise ValueError(f'unknown value: "{value}"')
 
     @property
     def players(self):
@@ -285,12 +330,33 @@ class Fixture(models.Model):
             return False
         return self.confirmations.count() >= self.required_confirmations_count
 
+    @property
+    def winner(self):
+        if self.score1 is None or self.score2 is None:
+            return None
+        if self.score1 > self.score2:
+            return self.player1
+        if self.score1 < self.score2:
+            return self.player2
+        return None
+
+    @property
+    def loser(self):
+        if self.score1 is None or self.score2 is None:
+            return None
+        if self.score1 < self.score2:
+            return self.player1
+        if self.score1 > self.score2:
+            return self.player2
+        return None
+
     def __repr__(self):
+        prepr = lambda p: None if p is None else f'{p.username} ({p.id})'
         data = ', '.join([
             f'mode={self.mode}',
             f'level={self.level}',
-            f'player1={self.player1.username} ({self.player1.id})',
-            f'player2={self.player2.username} ({self.player2.id})',
+            f'player1={prepr(self.player1)}',
+            f'player2={prepr(self.player2)}',
             f'score1={self.score1}',
             f'score2={self.score2}',
             f'confirmations={self.confirmations.count()} / {self.required_confirmations_count}',
