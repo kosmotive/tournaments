@@ -209,14 +209,19 @@ class Groups(Mode):
         return row
 
     @property
-    def standings(self): ## FIXME: this needs to account the different groups
-        standings = [self.get_standings(participant) for participant in self.tournament.participants]
-        standings.sort(key = lambda row: (row['points'], row['matches'], row['participant'].id), reverse = True)
+    def standings(self):
+        standings = list()
+        for group in self.groups_info:
+            group_standings = [self.get_standings(participant) for participant in self.tournament.participants.filter(id__in = group)]
+            group_standings.sort(key = lambda row: (row['points'], row['matches'], row['participant'].id), reverse = True)
+            standings.append(group_standings)
         return standings
 
     @property
     def placements(self):
-        return [row['participant'] for row in self.standings]
+        standings = self.standings
+        max_group_size = max((len(group) for group in self.groups_info))
+        return [[group[position]['participant'] for group in standings if position < len(group)] for position in range(max_group_size)]
 
 
 class Knockout(Mode):

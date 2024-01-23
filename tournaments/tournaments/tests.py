@@ -285,46 +285,50 @@ class GroupsTest(ModeTestBase, TestCase):
 
         # Test on level 0 (no scores yet).
         expected_standings = [
-            {
-                'participant': User.objects.get(id = 5),
-                'win_count': 0,
-                'loss_count': 0,
-                'draw_count': 0,
-                'points': 0,
-                'matches': 0,
-            },
-            {
-                'participant': User.objects.get(id = 4),
-                'win_count': 0,
-                'loss_count': 0,
-                'draw_count': 0,
-                'points': 0,
-                'matches': 0,
-            },
-            {
-                'participant': User.objects.get(id = 3),
-                'win_count': 0,
-                'loss_count': 0,
-                'draw_count': 0,
-                'points': 0,
-                'matches': 0,
-            },
-            {
-                'participant': User.objects.get(id = 2),
-                'win_count': 0,
-                'loss_count': 0,
-                'draw_count': 0,
-                'points': 0,
-                'matches': 0,
-            },
-            {
-                'participant': User.objects.get(id = 1),
-                'win_count': 0,
-                'loss_count': 0,
-                'draw_count': 0,
-                'points': 0,
-                'matches': 0,
-            },
+            [
+                {
+                    'participant': User.objects.get(id = 5),
+                    'win_count': 0,
+                    'loss_count': 0,
+                    'draw_count': 0,
+                    'points': 0,
+                    'matches': 0,
+                },
+                {
+                    'participant': User.objects.get(id = 3),
+                    'win_count': 0,
+                    'loss_count': 0,
+                    'draw_count': 0,
+                    'points': 0,
+                    'matches': 0,
+                },
+                {
+                    'participant': User.objects.get(id = 1),
+                    'win_count': 0,
+                    'loss_count': 0,
+                    'draw_count': 0,
+                    'points': 0,
+                    'matches': 0,
+                },
+            ],
+            [
+                {
+                    'participant': User.objects.get(id = 4),
+                    'win_count': 0,
+                    'loss_count': 0,
+                    'draw_count': 0,
+                    'points': 0,
+                    'matches': 0,
+                },
+                {
+                    'participant': User.objects.get(id = 2),
+                    'win_count': 0,
+                    'loss_count': 0,
+                    'draw_count': 0,
+                    'points': 0,
+                    'matches': 0,
+                },
+            ],
         ]
         self.assertEqual(mode.standings, expected_standings)
 
@@ -332,46 +336,50 @@ class GroupsTest(ModeTestBase, TestCase):
         fixture = mode.current_fixtures.get()
         self._confirm_fixture(fixture, score1 = 8, score2 = 7)
         expected_standings = [
-            {
-                'participant': User.objects.get(id = 5),
-                'win_count': 1,
-                'loss_count': 0,
-                'draw_count': 0,
-                'points': 3,
-                'matches': 1,
-            },
-            {
-                'participant': User.objects.get(id = 3),
-                'win_count': 0,
-                'loss_count': 1,
-                'draw_count': 0,
-                'points': 0,
-                'matches': 1,
-            },
-            {
-                'participant': User.objects.get(id = 4),
-                'win_count': 0,
-                'loss_count': 0,
-                'draw_count': 0,
-                'points': 0,
-                'matches': 0,
-            },
-            {
-                'participant': User.objects.get(id = 2),
-                'win_count': 0,
-                'loss_count': 0,
-                'draw_count': 0,
-                'points': 0,
-                'matches': 0,
-            },
-            {
-                'participant': User.objects.get(id = 1),
-                'win_count': 0,
-                'loss_count': 0,
-                'draw_count': 0,
-                'points': 0,
-                'matches': 0,
-            },
+            [
+                {
+                    'participant': User.objects.get(id = 5),
+                    'win_count': 1,
+                    'loss_count': 0,
+                    'draw_count': 0,
+                    'points': 3,
+                    'matches': 1,
+                },
+                {
+                    'participant': User.objects.get(id = 3),
+                    'win_count': 0,
+                    'loss_count': 1,
+                    'draw_count': 0,
+                    'points': 0,
+                    'matches': 1,
+                },
+                {
+                    'participant': User.objects.get(id = 1),
+                    'win_count': 0,
+                    'loss_count': 0,
+                    'draw_count': 0,
+                    'points': 0,
+                    'matches': 0,
+                },
+            ],
+            [
+                {
+                    'participant': User.objects.get(id = 4),
+                    'win_count': 0,
+                    'loss_count': 0,
+                    'draw_count': 0,
+                    'points': 0,
+                    'matches': 0,
+                },
+                {
+                    'participant': User.objects.get(id = 2),
+                    'win_count': 0,
+                    'loss_count': 0,
+                    'draw_count': 0,
+                    'points': 0,
+                    'matches': 0,
+                },
+            ],
         ]
         self.assertEqual(mode.standings, expected_standings)
 
@@ -379,46 +387,50 @@ class GroupsTest(ModeTestBase, TestCase):
         fixture = mode.current_fixtures.get()
         self._confirm_fixture(fixture, score1 = 5, score2 = 5)
         expected_standings = [
-            {
-                'participant': User.objects.get(id = 5),
-                'win_count': 1,
-                'loss_count': 0,
-                'draw_count': 1,
-                'points': 4,
-                'matches': 2,
-            },
-            {
-                'participant': User.objects.get(id = 1),
-                'win_count': 0,
-                'loss_count': 0,
-                'draw_count': 1,
-                'points': 1,
-                'matches': 1,
-            },
-            {
-                'participant': User.objects.get(id = 3),
-                'win_count': 0,
-                'loss_count': 1,
-                'draw_count': 0,
-                'points': 0,
-                'matches': 1,
-            },
-            {
-                'participant': User.objects.get(id = 4),
-                'win_count': 0,
-                'loss_count': 0,
-                'draw_count': 0,
-                'points': 0,
-                'matches': 0,
-            },
-            {
-                'participant': User.objects.get(id = 2),
-                'win_count': 0,
-                'loss_count': 0,
-                'draw_count': 0,
-                'points': 0,
-                'matches': 0,
-            },
+            [
+                {
+                    'participant': User.objects.get(id = 5),
+                    'win_count': 1,
+                    'loss_count': 0,
+                    'draw_count': 1,
+                    'points': 4,
+                    'matches': 2,
+                },
+                {
+                    'participant': User.objects.get(id = 1),
+                    'win_count': 0,
+                    'loss_count': 0,
+                    'draw_count': 1,
+                    'points': 1,
+                    'matches': 1,
+                },
+                {
+                    'participant': User.objects.get(id = 3),
+                    'win_count': 0,
+                    'loss_count': 1,
+                    'draw_count': 0,
+                    'points': 0,
+                    'matches': 1,
+                },
+            ],
+            [
+                {
+                    'participant': User.objects.get(id = 4),
+                    'win_count': 0,
+                    'loss_count': 0,
+                    'draw_count': 0,
+                    'points': 0,
+                    'matches': 0,
+                },
+                {
+                    'participant': User.objects.get(id = 2),
+                    'win_count': 0,
+                    'loss_count': 0,
+                    'draw_count': 0,
+                    'points': 0,
+                    'matches': 0,
+                },
+            ],
         ]
         self.assertEqual(mode.standings, expected_standings)
 
@@ -426,94 +438,120 @@ class GroupsTest(ModeTestBase, TestCase):
         fixture1, fixture2 = mode.current_fixtures.all()
         self._confirm_fixture(fixture1, score1 = 6, score2 = 9)
         expected_standings = [
-            {
-                'participant': User.objects.get(id = 5),
-                'win_count': 1,
-                'loss_count': 0,
-                'draw_count': 1,
-                'points': 4,
-                'matches': 2,
-            },
-            {
-                'participant': User.objects.get(id = 1),
-                'win_count': 1,
-                'loss_count': 0,
-                'draw_count': 1,
-                'points': 4,
-                'matches': 2,
-            },
-            {
-                'participant': User.objects.get(id = 3),
-                'win_count': 0,
-                'loss_count': 2,
-                'draw_count': 0,
-                'points': 0,
-                'matches': 2,
-            },
-            {
-                'participant': User.objects.get(id = 4),
-                'win_count': 0,
-                'loss_count': 0,
-                'draw_count': 0,
-                'points': 0,
-                'matches': 0,
-            },
-            {
-                'participant': User.objects.get(id = 2),
-                'win_count': 0,
-                'loss_count': 0,
-                'draw_count': 0,
-                'points': 0,
-                'matches': 0,
-            },
+            [
+                {
+                    'participant': User.objects.get(id = 5),
+                    'win_count': 1,
+                    'loss_count': 0,
+                    'draw_count': 1,
+                    'points': 4,
+                    'matches': 2,
+                },
+                {
+                    'participant': User.objects.get(id = 1),
+                    'win_count': 1,
+                    'loss_count': 0,
+                    'draw_count': 1,
+                    'points': 4,
+                    'matches': 2,
+                },
+                {
+                    'participant': User.objects.get(id = 3),
+                    'win_count': 0,
+                    'loss_count': 2,
+                    'draw_count': 0,
+                    'points': 0,
+                    'matches': 2,
+                },
+            ],
+            [
+                {
+                    'participant': User.objects.get(id = 4),
+                    'win_count': 0,
+                    'loss_count': 0,
+                    'draw_count': 0,
+                    'points': 0,
+                    'matches': 0,
+                },
+                {
+                    'participant': User.objects.get(id = 2),
+                    'win_count': 0,
+                    'loss_count': 0,
+                    'draw_count': 0,
+                    'points': 0,
+                    'matches': 0,
+                },
+            ],
         ]
         self.assertEqual(mode.standings, expected_standings)
 
         # Test on level 3 (user-4 vs. user-2).
         self._confirm_fixture(fixture2, score1 = 5, score2 = 5)
         expected_standings = [
-            {
-                'participant': User.objects.get(id = 5),
-                'win_count': 1,
-                'loss_count': 0,
-                'draw_count': 1,
-                'points': 4,
-                'matches': 2,
-            },
-            {
-                'participant': User.objects.get(id = 1),
-                'win_count': 1,
-                'loss_count': 0,
-                'draw_count': 1,
-                'points': 4,
-                'matches': 2,
-            },
-            {
-                'participant': User.objects.get(id = 4),
-                'win_count': 0,
-                'loss_count': 0,
-                'draw_count': 1,
-                'points': 1,
-                'matches': 1,
-            },
-            {
-                'participant': User.objects.get(id = 2),
-                'win_count': 0,
-                'loss_count': 0,
-                'draw_count': 1,
-                'points': 1,
-                'matches': 1,
-            },
-            {
-                'participant': User.objects.get(id = 3),
-                'win_count': 0,
-                'loss_count': 2,
-                'draw_count': 0,
-                'points': 0,
-                'matches': 2,
-            },
+            [
+                {
+                    'participant': User.objects.get(id = 5),
+                    'win_count': 1,
+                    'loss_count': 0,
+                    'draw_count': 1,
+                    'points': 4,
+                    'matches': 2,
+                },
+                {
+                    'participant': User.objects.get(id = 1),
+                    'win_count': 1,
+                    'loss_count': 0,
+                    'draw_count': 1,
+                    'points': 4,
+                    'matches': 2,
+                },
+                {
+                    'participant': User.objects.get(id = 3),
+                    'win_count': 0,
+                    'loss_count': 2,
+                    'draw_count': 0,
+                    'points': 0,
+                    'matches': 2,
+                },
+            ],
+            [
+                {
+                    'participant': User.objects.get(id = 4),
+                    'win_count': 0,
+                    'loss_count': 0,
+                    'draw_count': 1,
+                    'points': 1,
+                    'matches': 1,
+                },
+                {
+                    'participant': User.objects.get(id = 2),
+                    'win_count': 0,
+                    'loss_count': 0,
+                    'draw_count': 1,
+                    'points': 1,
+                    'matches': 1,
+                },
+            ],
         ]
         self.assertEqual(mode.standings, expected_standings)
+        return mode
+
+    def test_placements(self):
+        mode = self.test_standings()
+        expected_placements = [
+            [
+                User.objects.get(id = 5),
+                User.objects.get(id = 4),
+            ],
+            [
+                User.objects.get(id = 1),
+                User.objects.get(id = 2),
+            ],
+            [
+                User.objects.get(id = 3),
+            ],
+        ]
+        self.assertEqual(mode.placements, expected_placements)
 
     def test_required_confirmations_count(self):
         expected_counts = {
