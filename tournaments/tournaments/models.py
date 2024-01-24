@@ -30,7 +30,7 @@ class Tournament(models.Model):
             stage['tournament'] = tournament
 
             if 'id' in stage.keys( ):
-                stage['slug'] = stage.pop('id')
+                stage['identifier'] = stage.pop('id')
 
             mode_type = stage.pop('mode')
 
@@ -88,14 +88,14 @@ class Participation(models.Model):
 
 def parse_played_by(played_by):
     m = re.match(r'^([a-zA-Z_0-9]+)\.placements\[([-0-9:]+)\]$', played_by)
-    slug = m.group(1)
+    identifier = m.group(1)
     slice_str = m.group(2)
     parts = slice_str.split(':')
     parts = [int(part) if len(part) > 0 else None for part in parts]
     assert 1 <= len(parts) <= 3, slice_str
     if len(parts) == 1: parts = parts + [parts[0] + 1]
     placements_slice = slice(*parts)
-    return slug, placements_slice
+    return identifier, placements_slice
 
 
 def unwrap_list(items):
@@ -107,7 +107,7 @@ def unwrap_list(items):
 
 class Mode(PolymorphicModel):
 
-    slug = models.SlugField() ## TODO: rename to `identifier`
+    identifier = models.SlugField()
     name = models.CharField(max_length = 100)
     tournament = models.ForeignKey('Tournament', on_delete = models.CASCADE, related_name = 'stages')
     played_by  = models.JSONField(default = list)
@@ -133,8 +133,8 @@ class Mode(PolymorphicModel):
             return self.tournament.participants
         participants = list()
         for played_by in self.played_by:
-            slug, placements_slice = parse_played_by(played_by)
-            participants_chunk = unwrap_list(self.tournament.stages.get(slug = slug).placements[placements_slice])
+            identifier, placements_slice = parse_played_by(played_by)
+            participants_chunk = unwrap_list(self.tournament.stages.get(identifier = identifier).placements[placements_slice])
             if isinstance(participants_chunk, list):
                 participants += participants_chunk
             else:

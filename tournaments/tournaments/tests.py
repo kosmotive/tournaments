@@ -244,7 +244,7 @@ class ModeTest(ModeTestBase, TestCase):
 
     def test_participants_from_groups(self):
         self.add_participants(self.tournament, 8)
-        mode1 = Groups.objects.create(tournament = self.tournament, min_group_size = 3, max_group_size = 4, slug = 'groups')
+        mode1 = Groups.objects.create(tournament = self.tournament, min_group_size = 3, max_group_size = 4, identifier = 'groups')
         mode1.create_fixtures(mode1.participants)
         mode2 = Mode.objects.create(
             tournament = self.tournament,
@@ -276,7 +276,7 @@ class ModeTest(ModeTestBase, TestCase):
 
     def test_participants_from_knockout(self):
         self.add_participants(self.tournament, 8)
-        mode1 = Knockout.objects.create(tournament = self.tournament, slug = 'knockout')
+        mode1 = Knockout.objects.create(tournament = self.tournament, identifier = 'knockout')
         mode1.create_fixtures(mode1.participants)
         mode2 = Mode.objects.create(
             tournament = self.tournament,
