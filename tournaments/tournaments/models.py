@@ -86,7 +86,7 @@ class Participation(models.Model):
         ]
 
 
-def parse_played_by(played_by):
+def parse_placements_str(played_by):
     m = re.match(r'^([a-zA-Z_0-9]+)\.placements\[([-0-9:]+)\]$', played_by)
     identifier = m.group(1)
     slice_str = m.group(2)
@@ -133,7 +133,7 @@ class Mode(PolymorphicModel):
             return self.tournament.participants
         participants = list()
         for played_by in self.played_by:
-            identifier, placements_slice = parse_played_by(played_by)
+            identifier, placements_slice = parse_placements_str(played_by)
             participants_chunk = unwrap_list(self.tournament.stages.get(identifier = identifier).placements[placements_slice])
             if isinstance(participants_chunk, list):
                 participants += participants_chunk
@@ -227,6 +227,30 @@ def create_division_schedule(participants, with_returns = False):
             return schedule
 
 
+def get_stats(participant, filters = dict()):
+    row = dict(participant = participant, win_count = 0, loss_count = 0, draw_count = 0, matches = 0)
+    for fixture in participant.fixtures1.filter(**filters) | participant.fixtures2.filter(**filters):
+
+        # Only account for confirmed scores.
+        if not fixture.is_confirmed: continue
+        scores = (fixture.score1, fixture.score2)
+        row['matches'] += 1
+
+        # Normalize order of scores so that the score of `participant` is first.
+        if fixture.player2.id == participant.id:
+            scores = scores[::-1]
+
+        # Account points.
+        if scores[0] == scores[1]:
+            row['draw_count'] += 1
+        elif scores[0] > scores[1]:
+            row['win_count'] += 1
+        elif scores[0] < scores[1]:
+            row['loss_count'] += 1
+
+    return row
+
+
 class Groups(Mode):
 
     min_group_size = models.PositiveSmallIntegerField()
@@ -259,26 +283,7 @@ class Groups(Mode):
                     )
 
     def get_standings(self, participant):
-        row = dict(participant = participant, win_count = 0, loss_count = 0, draw_count = 0, matches = 0)
-        for fixture in participant.fixtures1.all() | participant.fixtures2.all():
-
-            # Only account for confirmed scores.
-            if not fixture.is_confirmed: continue
-            scores = (fixture.score1, fixture.score2)
-            row['matches'] += 1
-
-            # Normalize order of scores so that the score of `participant` is first.
-            if fixture.player2.id == participant.id:
-                scores = scores[::-1]
-
-            # Account points.
-            if scores[0] == scores[1]:
-                row['draw_count'] += 1
-            elif scores[0] > scores[1]:
-                row['win_count'] += 1
-            elif scores[0] < scores[1]:
-                row['loss_count'] += 1
-
+        row = get_stats(participant, dict(mode = self))
         row['points'] = 3 * row['win_count'] + 1 * row['draw_count']
         return row
 

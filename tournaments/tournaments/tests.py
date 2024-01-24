@@ -7,7 +7,9 @@ import numpy as np
 from tournaments.models import (
     split_into_groups,
     create_division_schedule,
-    parse_played_by,
+    parse_placements_str,
+    get_stats,
+    unwrap_list,
     Tournament,
     Participation,
     Mode,
@@ -31,8 +33,8 @@ test_tournament1_yml = \
       name: Main Round
       mode: knockout
       played-by:
-      - groups.placements[0]
-      - groups.placements[1]
+      - preliminaries.placements[0]
+      - preliminaries.placements[1]
     -
       id: playoffs
       name: Playoffs
@@ -123,28 +125,28 @@ class create_division_schedule_Test(TestCase):
         assert_division_schedule_validity(self, actual, with_returns = False)
 
 
-class parse_played_by_Test(TestCase):
+class parse_placements_str_Test(TestCase):
 
     def setUp(self):
         self.placements = list(np.arange(10))
 
     def test_literal(self):
-        actual = parse_played_by('stage.placements[0]')
+        actual = parse_placements_str('stage.placements[0]')
         self.assertEqual(actual[0], 'stage')
         self.assertEqual(self.placements[actual[1]], [0])
 
     def test_sequence(self):
-        actual = parse_played_by('stage.placements[:2]')
+        actual = parse_placements_str('stage.placements[:2]')
         self.assertEqual(actual[0], 'stage')
         self.assertEqual(self.placements[actual[1]], [0, 1])
 
     def test_sequence_with_offset(self):
-        actual = parse_played_by('stage.placements[1:3]')
+        actual = parse_placements_str('stage.placements[1:3]')
         self.assertEqual(actual[0], 'stage')
         self.assertEqual(self.placements[actual[1]], [1, 2])
 
     def test_sequence_reverse(self):
-        actual = parse_played_by('stage.placements[1::-1]')
+        actual = parse_placements_str('stage.placements[1::-1]')
         self.assertEqual(actual[0], 'stage')
         self.assertEqual(self.placements[actual[1]], [1, 0])
 
@@ -929,7 +931,7 @@ class TournamentTest(TestCase):
                 id = user_idx + 1,
                 username = f'user-{user_idx + 1}',
                 password =  'password')
-            for user_idx in range(8)
+            for user_idx in range(16)
         ]
 
     def test_load_tournament1(self):
@@ -979,3 +981,65 @@ class TournamentTest(TestCase):
         for fixture in tournament.current_stage.fixtures.all():
             _confirm_fixture(self.participants, fixture)
         self.assertIsNone(tournament.current_stage)
+
+    def test_update_state(self):
+        tournament = self.test_load_tournament1()
+        _add_participants(self.participants, tournament)
+        tournament.update_state()
+
+        # Play through the tournament, always make the participant with the higher ID win.
+        while tournament.current_stage is not None:
+
+            # Play the current level, then update the tournament state.
+            for fixture in tournament.current_stage.current_fixtures:
+
+                _confirm_fixture(self.participants, fixture, score1 = fixture.player1.id, score2 = fixture.player2.id)
+
+            tournament.update_state()
+
+        # Verfify results.
+        preliminaries = tournament.stages.get(identifier = 'preliminaries')
+        main_round    = tournament.stages.get(identifier =    'main_round')
+        playoffs      = tournament.stages.get(identifier =      'playoffs')
+        p1, p2 = main_round.placements[:2]
+        p3, p4 = [unwrap_list(p) for p in playoffs.placements[:2]]
+
+        # Verify that `p1`, `p2`, `p3`, `p4` finished the preliminaries as top-2.
+        def placement(participant):
+            for position, participants in enumerate(preliminaries.placements):
+                participants = [p.id for p in participants]
+                if participant.id in participants:
+                    return position
+        self.assertTrue(placement(p1) < 2, placement(p1))
+        self.assertTrue(placement(p2) < 2, placement(p2))
+        self.assertTrue(placement(p3) < 2, placement(p3))
+        self.assertTrue(placement(p4) < 2, placement(p4))
+
+        # Verify that `p1` won all `main_round` matches
+        p1_stats_main_round = get_stats(p1, dict(mode = main_round))
+        self.assertEqual(p1_stats_main_round['win_count'], p1_stats_main_round['matches'])
+
+        # Verify that `p2` won all `main_round` matches except for one lost match
+        p2_stats_main_round = get_stats(p2, dict(mode = main_round))
+        self.assertEqual(p2_stats_main_round['win_count'], p2_stats_main_round['matches'] - 1)
+        self.assertEqual(p2_stats_main_round['loss_count'], 1)
+
+        # Verify that `p3` won all `main_round` matches except for one, had one less than `p2`, and won the playoffs
+        p3_stats_main_round = get_stats(p3, dict(mode = main_round))
+        self.assertEqual(p3_stats_main_round['win_count'], p3_stats_main_round['matches'] - 1)
+        self.assertEqual(p3_stats_main_round['loss_count'], 1)
+        self.assertEqual(p3_stats_main_round['matches'], p2_stats_main_round['matches'] - 1)
+
+        p3_stats_playoffs = get_stats(p3, dict(mode = playoffs))
+        self.assertEqual(p3_stats_playoffs['win_count'], 1)
+        self.assertEqual(p3_stats_playoffs['matches'], 1)
+
+        # Verify that `p4` won all `main_round` matches except for one, had one less than `p2`, and lost the playoffs
+        p4_stats_main_round = get_stats(p3, dict(mode = main_round))
+        self.assertEqual(p4_stats_main_round['win_count'], p4_stats_main_round['matches'] - 1)
+        self.assertEqual(p4_stats_main_round['loss_count'], 1)
+        self.assertEqual(p4_stats_main_round['matches'], p2_stats_main_round['matches'] - 1)
+
+        p4_stats_playoffs = get_stats(p4, dict(mode = playoffs))
+        self.assertEqual(p4_stats_playoffs['loss_count'], 1)
+        self.assertEqual(p4_stats_playoffs['matches'], 1)
