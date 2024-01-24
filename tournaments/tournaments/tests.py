@@ -7,8 +7,10 @@ import numpy as np
 from tournaments.models import (
     split_into_groups,
     create_division_schedule,
+    parse_played_by,
     Tournament,
     Participation,
+    Mode,
     Groups,
     Knockout,
     Fixture,
@@ -121,6 +123,32 @@ class create_division_schedule_Test(TestCase):
         assert_division_schedule_validity(self, actual, with_returns = False)
 
 
+class parse_played_by_Test(TestCase):
+
+    def setUp(self):
+        self.placements = list(np.arange(10))
+
+    def test_literal(self):
+        actual = parse_played_by('stage.placements[0]')
+        self.assertEqual(actual[0], 'stage')
+        self.assertEqual(self.placements[actual[1]], [0])
+
+    def test_sequence(self):
+        actual = parse_played_by('stage.placements[:2]')
+        self.assertEqual(actual[0], 'stage')
+        self.assertEqual(self.placements[actual[1]], [0, 1])
+
+    def test_sequence_with_offset(self):
+        actual = parse_played_by('stage.placements[1:3]')
+        self.assertEqual(actual[0], 'stage')
+        self.assertEqual(self.placements[actual[1]], [1, 2])
+
+    def test_sequence_reverse(self):
+        actual = parse_played_by('stage.placements[1::-1]')
+        self.assertEqual(actual[0], 'stage')
+        self.assertEqual(self.placements[actual[1]], [1, 0])
+
+
 def assert_division_schedule_validity(test, schedule, with_returns):
     try:
         participants = list(np.unique(sum(schedule, list())))
@@ -170,8 +198,7 @@ def _confirm_fixture(participants, fixture, score1 = 0, score2 = 0):
     for participant in participants[:n]:
         fixture.confirmations.add(participant)
 
-    fixture.score1 = score1
-    fixture.score2 = score2
+    fixture.score = (score1, score2)
     fixture.save()
 
 
@@ -196,13 +223,80 @@ class ModeTestBase:
     def confirm_fixture(self, *args, **kwargs):
         _confirm_fixture(self.participants, *args, **kwargs)
 
-    def _group_fixtures_by_level(self, mode):
+    def group_fixtures_by_level(self, mode):
         actual_fixtures = dict()
         pid = lambda p: None if p is None else p.id
         for fixture in mode.fixtures.all():
             actual_fixtures.setdefault(fixture.level, list())
             actual_fixtures[fixture.level].append((pid(fixture.player1), pid(fixture.player2)))
         return actual_fixtures
+
+
+class ModeTest(ModeTestBase, TestCase):
+
+    def test_participants_default(self):
+        self.add_participants(self.tournament, 8)
+        mode = Mode.objects.create(tournament = self.tournament)
+        actual_participants = [p.id for p in mode.participants]
+        expected_participants = [p.id for p in self.participants[:8]]
+        self.assertEqual(actual_participants, expected_participants)
+        return mode
+
+    def test_participants_from_groups(self):
+        self.add_participants(self.tournament, 8)
+        mode1 = Groups.objects.create(tournament = self.tournament, min_group_size = 3, max_group_size = 4, slug = 'groups')
+        mode1.create_fixtures(mode1.participants)
+        mode2 = Mode.objects.create(
+            tournament = self.tournament,
+            played_by = [
+                'groups.placements[0]',
+                'groups.placements[1]',
+            ]
+        )
+        p11, p12 = mode1.groups_info[0][:2 ]
+        p21, p22 = mode1.groups_info[1][-2:]
+
+        # Score most points to p11 and p21, and second-most to p12 and p22.
+        for fixture in mode1.fixtures.all():
+            if fixture.player1.id in (p11, p21):
+                self.confirm_fixture(fixture, 1, 0)
+            elif fixture.player2.id in (p11, p21):
+                self.confirm_fixture(fixture, 0, 1)
+            elif fixture.player1.id in (p12, p22):
+                self.confirm_fixture(fixture, 1, 0)
+            elif fixture.player2.id in (p12, p22):
+                self.confirm_fixture(fixture, 0, 1)
+            else:
+                self.confirm_fixture(fixture, 0, 0)
+
+        # Verify participants of the next stage.
+        actual_participants = [p.id for p in mode2.participants]
+        expected_participants = [p11, p21, p12, p22]
+        self.assertEqual(actual_participants, expected_participants)
+
+    def test_participants_from_knockout(self):
+        self.add_participants(self.tournament, 8)
+        mode1 = Knockout.objects.create(tournament = self.tournament, slug = 'knockout')
+        mode1.create_fixtures(mode1.participants)
+        mode2 = Mode.objects.create(
+            tournament = self.tournament,
+            played_by = [
+                'knockout.placements[0]',
+                'knockout.placements[1]',
+            ]
+        )
+        p1, p2 = mode1.participants[:2]
+
+        # Set p1 and p2 for the finals and let p1 win.
+        final = mode1.fixtures.all()[0]
+        final.player1 = User.objects.get(id = p1.id)
+        final.player2 = User.objects.get(id = p2.id)
+        self.confirm_fixture(final, 1, 0)
+
+        # Verify participants of the next stage.
+        actual_participants = [p.id for p in mode2.participants]
+        expected_participants = [p1.id, p2.id]
+        self.assertEqual(actual_participants, expected_participants)
 
 
 class GroupsTest(ModeTestBase, TestCase):
@@ -219,7 +313,7 @@ class GroupsTest(ModeTestBase, TestCase):
         self.assertEqual(actual_groups_info, expected_groups_info)
 
         # Verify fixtures.
-        actual_fixtures = self._group_fixtures_by_level(mode)
+        actual_fixtures = self.group_fixtures_by_level(mode)
         expected_fixtures = {
             0: [(1, 2)],
         }
@@ -238,7 +332,7 @@ class GroupsTest(ModeTestBase, TestCase):
         self.assertEqual(actual_groups_info, expected_groups_info)
 
         # Verify fixtures.
-        actual_fixtures = self._group_fixtures_by_level(mode)
+        actual_fixtures = self.group_fixtures_by_level(mode)
         expected_fixtures = {
             0: [(5, 3)],
             1: [(1, 5)],
@@ -598,7 +692,7 @@ class KnockoutTest(ModeTestBase, TestCase):
         mode.create_fixtures(self.participants[:2])
 
         # Verify fixtures.
-        actual_fixtures = self._group_fixtures_by_level(mode)
+        actual_fixtures = self.group_fixtures_by_level(mode)
         expected_fixtures = {
             0: [(2, 1)],
         }
@@ -611,7 +705,7 @@ class KnockoutTest(ModeTestBase, TestCase):
         mode.create_fixtures(self.participants[:4])
 
         # Verify fixtures.
-        actual_fixtures = self._group_fixtures_by_level(mode)
+        actual_fixtures = self.group_fixtures_by_level(mode)
         expected_fixtures = {
             0: [(4, 3), (2, 1)],
             1: [(None, None)]
@@ -623,7 +717,7 @@ class KnockoutTest(ModeTestBase, TestCase):
         mode.create_fixtures(self.participants[:5])
 
         # Verify fixtures.
-        actual_fixtures = self._group_fixtures_by_level(mode)
+        actual_fixtures = self.group_fixtures_by_level(mode)
         expected_fixtures = {
             0: [(2, 1)],
             1: [(None, 5), (4, 3)],
@@ -638,7 +732,7 @@ class KnockoutTest(ModeTestBase, TestCase):
         mode.create_fixtures(self.participants[:6])
 
         # Verify fixtures.
-        actual_fixtures = self._group_fixtures_by_level(mode)
+        actual_fixtures = self.group_fixtures_by_level(mode)
         expected_fixtures = {
             0: [(4, 3), (2, 1)],
             1: [(None, None), (6, 5)],
@@ -666,13 +760,14 @@ class KnockoutTest(ModeTestBase, TestCase):
         mode = self.test_create_fixtures_5participants()
         playoff = mode.current_fixtures.get()
 
-        # Propagate play-off (user-2 vs. user-1)
+        # Propagate play-off (user-2 vs. user-1).
         playoff.score = (10, 12)
         playoff.save()
-        semifinal1 = mode.propagate(playoff)
+        propagate_ret = mode.propagate(playoff)
+        self.assertTrue(propagate_ret)
 
         # Verify fixtures after play-off.
-        actual_fixtures = self._group_fixtures_by_level(mode)
+        actual_fixtures = self.group_fixtures_by_level(mode)
         expected_fixtures = {
             0: [(2, 1)],
             1: [(1, 5), (4, 3)],
@@ -680,13 +775,15 @@ class KnockoutTest(ModeTestBase, TestCase):
         }
         self.assertEqual(actual_fixtures, expected_fixtures)
 
-        # Propagate 1st seminfal (user-1 vs. user-5)
+        # Propagate 1st seminfal (user-1 vs. user-5).
+        semifinal1 = mode.fixtures.get(player1 = User.objects.get(id = 1), player2 = User.objects.get(id = 5))
         semifinal1.score = (12, 10)
         semifinal1.save()
-        final = mode.propagate(semifinal1)
+        propagate_ret = mode.propagate(semifinal1)
+        self.assertTrue(propagate_ret)
 
         # Verify fixtures after 1st semifinal.
-        actual_fixtures = self._group_fixtures_by_level(mode)
+        actual_fixtures = self.group_fixtures_by_level(mode)
         expected_fixtures = {
             0: [(2, 1)],
             1: [(1, 5), (4, 3)],
@@ -694,14 +791,19 @@ class KnockoutTest(ModeTestBase, TestCase):
         }
         self.assertEqual(actual_fixtures, expected_fixtures)
 
-        # Propagate 2nd seminfal (user-4 vs. user-3)
+        # Propagate 2nd seminfal (user-4 vs. user-3).
         semifinal2 = mode.fixtures.get(player1 = User.objects.get(id = 4), player2 = User.objects.get(id = 3))
         semifinal2.score = (12, 10)
         semifinal2.save()
-        final = mode.propagate(semifinal2)
+        propagate_ret = mode.propagate(semifinal2)
+        self.assertTrue(propagate_ret)
+
+        # Test redundant propgatation.
+        propagate_ret = mode.propagate(semifinal2)
+        self.assertFalse(propagate_ret)
 
         # Verify fixtures after 2nd semifinal.
-        actual_fixtures = self._group_fixtures_by_level(mode)
+        actual_fixtures = self.group_fixtures_by_level(mode)
         expected_fixtures = {
             0: [(2, 1)],
             1: [(1, 5), (4, 3)],
@@ -709,11 +811,12 @@ class KnockoutTest(ModeTestBase, TestCase):
         }
         self.assertEqual(actual_fixtures, expected_fixtures)
 
-        # Propagate final (user-1 vs. user-4)
+        # Propagate final (user-1 vs. user-4).
+        final = mode.fixtures.get(player1 = User.objects.get(id = 1), player2 = User.objects.get(id = 4))
         final.score = (12, 10)
         final.save()
-        result = mode.propagate(final)
-        self.assertIsNone(result)
+        propagate_ret = mode.propagate(final)
+        self.assertFalse(propagate_ret)
 
         return mode
 

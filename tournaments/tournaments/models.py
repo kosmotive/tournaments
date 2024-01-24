@@ -1,4 +1,5 @@
 import math
+import re
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -57,9 +58,14 @@ class Tournament(models.Model):
                 return stage
         return None ## indicates that the tournament is finished
 
-    def create_fixtures(self):
-        for mode in self.mode_set:
-            mode.create_fixtures(self.participants)
+    def update_state(self):
+        # There is nothing to be updated when the tournament is finished.
+        if self.current_stage is None:
+            return
+
+        # Propagate `update_state` to the current stage as long as updates happen
+        while self.current_stage.update_state():
+            pass
 
 
 class Participation(models.Model):
@@ -80,9 +86,28 @@ class Participation(models.Model):
         ]
 
 
+def parse_played_by(played_by):
+    m = re.match(r'^([a-zA-Z_0-9]+)\.placements\[([-0-9:]+)\]$', played_by)
+    slug = m.group(1)
+    slice_str = m.group(2)
+    parts = slice_str.split(':')
+    parts = [int(part) if len(part) > 0 else None for part in parts]
+    assert 1 <= len(parts) <= 3, slice_str
+    if len(parts) == 1: parts = parts + [parts[0] + 1]
+    placements_slice = slice(*parts)
+    return slug, placements_slice
+
+
+def unwrap_list(items):
+    if isinstance(items, list):
+        return unwrap_list(items[0]) if len(items) == 1 else items
+    else:
+        return items
+
+
 class Mode(PolymorphicModel):
 
-    slug = models.SlugField()
+    slug = models.SlugField() ## TODO: rename to `identifier`
     name = models.CharField(max_length = 100)
     tournament = models.ForeignKey('Tournament', on_delete = models.CASCADE, related_name = 'stages')
     played_by  = models.JSONField(default = list)
@@ -93,6 +118,28 @@ class Mode(PolymorphicModel):
     @property
     def placements(self):
         raise NotImplementedError()
+
+    def update_state(self):
+        if self.fixtures.count() == 0:
+            participants = self.participants
+            self.create_fixtures(participants)
+            return True
+        else:
+            return self.update_fixtures()
+
+    @property
+    def participants(self):
+        if len(self.played_by) == 0:
+            return self.tournament.participants
+        participants = list()
+        for played_by in self.played_by:
+            slug, placements_slice = parse_played_by(played_by)
+            participants_chunk = unwrap_list(self.tournament.stages.get(slug = slug).placements[placements_slice])
+            if isinstance(participants_chunk, list):
+                participants += participants_chunk
+            else:
+                participants.append(participants_chunk)
+        return participants
 
     @property
     def levels(self):
@@ -125,6 +172,9 @@ class Mode(PolymorphicModel):
 
     def check_fixture(self, fixture):
         pass
+
+    def update_fixtures(self):
+        return False
 
 
 def split_into_groups(items, min_group_size, max_group_size):
@@ -278,17 +328,40 @@ class Knockout(Mode):
 
         assert len(remaining_participants) == 0, remaining_participants
 
+    def get_parent_fixture(self, fixture):
+        if fixture.position == 1: return None
+        return self.fixtures.get(position = fixture.position // 2)
+
     def propagate(self, fixture):
         assert fixture.mode.id == self.id
         assert fixture.winner is not None
-        if fixture.position == 1: return None
-        parent_fixture = self.fixtures.get(position = fixture.position // 2)
+        parent_fixture = self.get_parent_fixture(fixture)
+
+        # There is nothing to propagate if `fixture` is the root of the binary tree.
+        if parent_fixture is None:
+            return False
+
+        # Propagate to either side of the parent fixture.
         if fixture.position % 2 == 0:
+            if parent_fixture.player1 is not None:
+                return False
             parent_fixture.player1 = fixture.winner
         else:
+            if parent_fixture.player2 is not None:
+                return False
             parent_fixture.player2 = fixture.winner
+
+        # If anything was propagated, then save.
         parent_fixture.save()
-        return parent_fixture
+        return True
+
+    def update_fixtures(self):
+        updates_performed = False
+        for fixture in self.fixtures.all():
+            if fixture.is_confirmed:
+                if self.propagate(fixture):
+                    updates_performed = True
+        return updates_performed
 
     def check_fixture(self, fixture):
         if fixture.score1 is not None and fixture.score2 is not None and fixture.score1 == fixture.score2:
