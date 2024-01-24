@@ -207,7 +207,7 @@ def _confirm_fixture(participants, fixture, score1 = 0, score2 = 0):
 class ModeTestBase:
 
     def setUp(self):
-        self.tournament = Tournament.objects.create(name = 'Test', podium = list())
+        self.tournament = Tournament.objects.create(name = 'Test', podium_spec = list())
         self.participants = list()
         for user_idx in range(10):
             user = User.objects.create_user(
@@ -886,7 +886,7 @@ class KnockoutTest(ModeTestBase, TestCase):
 class FixtureTest(TestCase):
 
     def setUp(self):
-        self.tournament = Tournament.objects.create(name = 'Test', podium = list())
+        self.tournament = Tournament.objects.create(name = 'Test', podium_spec = list())
         self.knockout   = Knockout.objects.create(tournament = self.tournament)
         self.players    = [
             User.objects.create(
@@ -1043,3 +1043,17 @@ class TournamentTest(TestCase):
         p4_stats_playoffs = get_stats(p4, dict(mode = playoffs))
         self.assertEqual(p4_stats_playoffs['loss_count'], 1)
         self.assertEqual(p4_stats_playoffs['matches'], 1)
+
+        return tournament
+
+    def test_podium(self):
+        tournament = self.test_update_state()
+        main_round = tournament.stages.get(identifier =    'main_round')
+        playoffs   = tournament.stages.get(identifier =      'playoffs')
+        p1, p2 = main_round.placements[:2]
+        p3, p4 = [unwrap_list(p) for p in playoffs.placements[:2]]
+
+        # Verify podium.
+        actual_podium = [p.id for p in tournament.podium]
+        expected_podium = [p1.id, p2.id, p3.id]
+        self.assertEqual(actual_podium, expected_podium)

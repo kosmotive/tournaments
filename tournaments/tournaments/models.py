@@ -14,7 +14,7 @@ import numpy as np
 class Tournament(models.Model):
 
     name = models.CharField(blank = False, max_length = 100)
-    podium = models.JSONField()
+    podium_spec = models.JSONField()
 
     @staticmethod
     def load(definition, name):
@@ -23,7 +23,7 @@ class Tournament(models.Model):
             definition = yaml.safe_load(definition)
 
         assert isinstance(definition, dict), repr(definition)
-        tournament = Tournament.objects.create(name = name, podium = definition['podium'])
+        tournament = Tournament.objects.create(name = name, podium_spec = definition['podium'])
 
         for stage in definition['stages']:
             stage = {key.replace('-', '_'): value for key, value in stage.items()}
@@ -66,6 +66,18 @@ class Tournament(models.Model):
         # Propagate `update_state` to the current stage as long as updates happen
         while self.current_stage.update_state():
             pass
+
+    @property
+    def podium(self):
+        podium = list()
+        for podium_entry in self.podium_spec:
+            identifier, placements_slice = parse_placements_str(podium_entry)
+            podium_chunk = unwrap_list(self.stages.get(identifier = identifier).placements[placements_slice])
+            if isinstance(podium_chunk, list):
+                podium += podium_chunk
+            else:
+                podium.append(podium_chunk)
+        return podium
 
 
 class Participation(models.Model):
