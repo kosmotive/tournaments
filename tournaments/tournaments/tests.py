@@ -701,6 +701,10 @@ class KnockoutTest(ModeTestBase, TestCase):
 
         return mode
 
+    def test_levels(self):
+        mode = self.test_create_fixtures_5participants()
+        self.assertEqual(mode.levels, 3)
+
     def test_current_fixtures(self):
         mode = self.test_propagate()
 
