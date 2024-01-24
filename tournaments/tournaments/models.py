@@ -59,16 +59,26 @@ class Tournament(models.Model):
         return None ## indicates that the tournament is finished
 
     def update_state(self):
-        # There is nothing to be updated when the tournament is finished.
         if self.current_stage is None:
-            return
 
-        # Propagate `update_state` to the current stage as long as updates happen
-        while self.current_stage.update_state():
-            pass
+            # If the tournament is finished, update the podium positions.
+            podium = self._get_podium()
+            for position, participant in enumerate(podium):
+                participation = self.participations.get(user = participant)
+                participation.podium_position = position
+                participation.save()
+
+        else:
+
+            # Propagate `update_state` to the current stage as long as updates happen.
+            while self.current_stage.update_state():
+                pass
 
     @property
     def podium(self):
+        return User.objects.filter(participations__tournament = self, participations__podium_position__isnull = False).order_by('participations__podium_position')
+
+    def _get_podium(self):
         podium = list()
         for podium_entry in self.podium_spec:
             identifier, placements_slice = parse_placements_str(podium_entry)
@@ -85,6 +95,7 @@ class Participation(models.Model):
     user = models.ForeignKey('auth.User', on_delete = models.PROTECT, related_name = 'participations')
     tournament = models.ForeignKey('Tournament', on_delete = models.CASCADE, related_name = 'participations')
     slot_id = models.PositiveIntegerField()
+    podium_position = models.PositiveIntegerField(null = True)
 
     @staticmethod
     def next_slot_id(tournament):
@@ -95,6 +106,7 @@ class Participation(models.Model):
         unique_together = [
             ('tournament', 'slot_id'),
             ('tournament', 'user'),
+            ('tournament', 'podium_position'),
         ]
 
 
