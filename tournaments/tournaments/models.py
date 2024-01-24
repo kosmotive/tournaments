@@ -5,6 +5,8 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import CheckConstraint, Q, Max
 
+from polymorphic.models import PolymorphicModel
+
 import numpy as np
 
 
@@ -16,35 +18,44 @@ class Tournament(models.Model):
     @staticmethod
     def load(definition, name):
         if isinstance(definition, str):
-            import pyyaml
-            definition = pyyaml.safe_load(definition)
+            import yaml
+            definition = yaml.safe_load(definition)
 
         assert isinstance(definition, dict), repr(definition)
         tournament = Tournament.objects.create(name = name, podium = definition['podium'])
 
         for stage in definition['stages']:
-            stage = dict(stage)
+            stage = {key.replace('-', '_'): value for key, value in stage.items()}
             stage['tournament'] = tournament
 
-            if 'id' in stage.keys():
+            if 'id' in stage.keys( ):
                 stage['slug'] = stage.pop('id')
 
-            if stage['mode'] == 'groups':
-                mode = Groups(**stage)
+            mode_type = stage.pop('mode')
 
-            if stage['mode'] == 'knockout':
-                mode = Knockout(**stage)
+            if mode_type == 'groups':
+                mode = Groups.objects.create(**stage)
 
-            if stage['mode'] == 'division':
+            if mode_type == 'knockout':
+                mode = Knockout.objects.create(**stage)
+
+            if mode_type == 'division':
                 stage['min_group_size'] = 2
-                stage['max_group_size'] = 2
-                mode = Groups(**stage)
+                stage['max_group_size'] = 32767 ## https://docs.djangoproject.com/en/5.0/ref/models/fields/#positivesmallintegerfield
+                mode = Groups.objects.create(**stage)
 
         return tournament
 
     @property
     def participants(self):
         return User.objects.filter(participations__tournament = self)
+
+    @property
+    def current_stage(self):
+        for stage in self.stages.all():
+            if not stage.is_finished:
+                return stage
+        return None ## indicates that the tournament is finished
 
     def create_fixtures(self):
         for mode in self.mode_set:
@@ -69,23 +80,26 @@ class Participation(models.Model):
         ]
 
 
-class Mode(models.Model):
+class Mode(PolymorphicModel):
 
     slug = models.SlugField()
     name = models.CharField(max_length = 100)
-    tournament = models.ForeignKey('Tournament', on_delete = models.CASCADE)
+    tournament = models.ForeignKey('Tournament', on_delete = models.CASCADE, related_name = 'stages')
     played_by  = models.JSONField(default = list)
 
     def create_fixtures(self, participants):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     @property
     def placements(self):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     @property
     def levels(self):
-        return 1 + self.fixtures.aggregate(Max('level'))['level__max']
+        if self.fixtures.count() == 0:
+            return 0
+        else:
+            return 1 + self.fixtures.aggregate(Max('level'))['level__max']
 
     @property
     def current_level(self):
@@ -104,7 +118,10 @@ class Mode(models.Model):
 
     @property
     def is_finished(self):
-        return self.current_level == self.levels
+        if self.levels == 0:
+            return False
+        else:
+            return self.current_level == self.levels
 
     def check_fixture(self, fixture):
         pass
@@ -217,6 +234,8 @@ class Groups(Mode):
 
     @property
     def standings(self):
+        if self.groups_info is None:
+            return None
         standings = list()
         for group in self.groups_info:
             group_standings = [self.get_standings(participant) for participant in self.tournament.participants.filter(id__in = group)]
@@ -227,6 +246,8 @@ class Groups(Mode):
     @property
     def placements(self):
         standings = self.standings
+        if standings is None:
+            return None
         max_group_size = max((len(group) for group in self.groups_info))
         return [[group[position]['participant'] for group in standings if position < len(group)] for position in range(max_group_size)]
 
@@ -275,6 +296,8 @@ class Knockout(Mode):
 
     @property
     def placements(self):
+        if self.fixtures.count() == 0:
+            return None
         final, semifinal1, semifinal2 = self.fixtures.all()[:3]
         return [final.winner] + [fixture.loser for fixture in self.fixtures.all()]
 

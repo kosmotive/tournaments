@@ -153,6 +153,28 @@ def assert_division_schedule_validity(test, schedule, with_returns):
         raise
 
 
+def _add_participants(participants_pool, tournament):
+    for participant in participants_pool:
+        Participation.objects.create(
+            user = participant,
+            tournament = tournament,
+            slot_id = Participation.next_slot_id(tournament))
+
+
+def _clear_participants(tournament):
+    Participation.objects.filter(tournament = tournament).delete()
+
+
+def _confirm_fixture(participants, fixture, score1 = 0, score2 = 0):
+    n = fixture.required_confirmations_count
+    for participant in participants[:n]:
+        fixture.confirmations.add(participant)
+
+    fixture.score1 = score1
+    fixture.score2 = score2
+    fixture.save()
+
+
 class ModeTestBase:
 
     def setUp(self):
@@ -165,15 +187,14 @@ class ModeTestBase:
                 password =  'password')
             self.participants.append(user)
 
-    def _add_participants(self, tournament, number):
-        for participant in self.participants[:number]:
-            Participation.objects.create(
-                user = participant,
-                tournament = tournament,
-                slot_id = Participation.next_slot_id(tournament))
+    def add_participants(self, tournament, number):
+        _add_participants(self.participants[:number], tournament)
 
-    def _clear_participants(self, tournament):
-        Participation.objects.filter(tournament = tournament).delete()
+    def clear_participants(self, tournament):
+        _clear_participants(tournament)
+
+    def confirm_fixture(self, *args, **kwargs):
+        _confirm_fixture(self.participants, *args, **kwargs)
 
     def _group_fixtures_by_level(self, mode):
         actual_fixtures = dict()
@@ -182,15 +203,6 @@ class ModeTestBase:
             actual_fixtures.setdefault(fixture.level, list())
             actual_fixtures[fixture.level].append((pid(fixture.player1), pid(fixture.player2)))
         return actual_fixtures
-
-    def _confirm_fixture(self, fixture, score1 = 0, score2 = 0):
-        n = fixture.required_confirmations_count
-        for participant in self.participants[:n]:
-            fixture.confirmations.add(participant)
-
-        fixture.score1 = score1
-        fixture.score2 = score2
-        fixture.save()
 
 
 class GroupsTest(ModeTestBase, TestCase):
@@ -251,7 +263,7 @@ class GroupsTest(ModeTestBase, TestCase):
         self.assertEqual(fixture.player1.id, 5)
         self.assertEqual(fixture.player2.id, 3)
 
-        self._confirm_fixture(fixture)
+        self.confirm_fixture(fixture)
 
         # Test on level 1.
         self.assertEqual(mode.current_level, 1)
@@ -261,7 +273,7 @@ class GroupsTest(ModeTestBase, TestCase):
         self.assertEqual(fixture.player1.id, 1)
         self.assertEqual(fixture.player2.id, 5)
 
-        self._confirm_fixture(fixture)
+        self.confirm_fixture(fixture)
 
         # Test on level 2.
         self.assertEqual(mode.current_level, 2)
@@ -273,9 +285,9 @@ class GroupsTest(ModeTestBase, TestCase):
         self.assertEqual(fixtures[1].player1.id, 4)
         self.assertEqual(fixtures[1].player2.id, 2)
 
-        self._confirm_fixture(fixtures[0])
+        self.confirm_fixture(fixtures[0])
         self.assertEqual(mode.current_level, 2)
-        self._confirm_fixture(fixtures[1])
+        self.confirm_fixture(fixtures[1])
 
         # Test on level 3.
         self.assertEqual(mode.current_level, 3)
@@ -283,7 +295,7 @@ class GroupsTest(ModeTestBase, TestCase):
 
     def test_standings(self):
         mode = self.test_create_fixtures_extended()
-        self._add_participants(self.tournament, 5)
+        self.add_participants(self.tournament, 5)
 
         # Test on level 0 (no scores yet).
         expected_standings = [
@@ -336,7 +348,7 @@ class GroupsTest(ModeTestBase, TestCase):
 
         # Test on level 1 (user-5 vs. user-3).
         fixture = mode.current_fixtures.get()
-        self._confirm_fixture(fixture, score1 = 8, score2 = 7)
+        self.confirm_fixture(fixture, score1 = 8, score2 = 7)
         expected_standings = [
             [
                 {
@@ -387,7 +399,7 @@ class GroupsTest(ModeTestBase, TestCase):
 
         # Test on level 2 (user-1 vs. user-5).
         fixture = mode.current_fixtures.get()
-        self._confirm_fixture(fixture, score1 = 5, score2 = 5)
+        self.confirm_fixture(fixture, score1 = 5, score2 = 5)
         expected_standings = [
             [
                 {
@@ -438,7 +450,7 @@ class GroupsTest(ModeTestBase, TestCase):
 
         # Test on level 3 (user-3 vs. user-1).
         fixture1, fixture2 = mode.current_fixtures.all()
-        self._confirm_fixture(fixture1, score1 = 6, score2 = 9)
+        self.confirm_fixture(fixture1, score1 = 6, score2 = 9)
         expected_standings = [
             [
                 {
@@ -488,7 +500,7 @@ class GroupsTest(ModeTestBase, TestCase):
         self.assertEqual(mode.standings, expected_standings)
 
         # Test on level 3 (user-4 vs. user-2).
-        self._confirm_fixture(fixture2, score1 = 5, score2 = 5)
+        self.confirm_fixture(fixture2, score1 = 5, score2 = 5)
         expected_standings = [
             [
                 {
@@ -556,6 +568,10 @@ class GroupsTest(ModeTestBase, TestCase):
         ]
         self.assertEqual(mode.placements, expected_placements)
 
+    def test_placements_none(self):
+        mode = Groups.objects.create(tournament = self.tournament, min_group_size = 2, max_group_size = 2)
+        self.assertIsNone(mode.placements)
+
     def test_required_confirmations_count(self):
         expected_counts = {
             2: 2,
@@ -569,8 +585,8 @@ class GroupsTest(ModeTestBase, TestCase):
         for n in range(2, 9):
             with self.subTest(n = n):
                 mode = Groups.objects.create(tournament = self.tournament, min_group_size = 2, max_group_size = 2)
-                self._clear_participants(self.tournament)
-                self._add_participants(self.tournament, n)
+                self.clear_participants(self.tournament)
+                self.add_participants(self.tournament, n)
                 mode.create_fixtures(self.participants[:n])
                 for fixture in mode.fixtures.all():
                     self.assertEqual(fixture.required_confirmations_count, expected_counts[n])
@@ -716,7 +732,7 @@ class KnockoutTest(ModeTestBase, TestCase):
         self.assertEqual(fixture.player1.id, 2)
         self.assertEqual(fixture.player2.id, 1)
 
-        self._confirm_fixture(fixture)
+        self.confirm_fixture(fixture)
 
         # Test on level 1.
         self.assertEqual(mode.current_level, 1)
@@ -728,9 +744,9 @@ class KnockoutTest(ModeTestBase, TestCase):
         self.assertEqual(fixtures[1].player1.id, 4)
         self.assertEqual(fixtures[1].player2.id, 3)
 
-        self._confirm_fixture(fixtures[0])
+        self.confirm_fixture(fixtures[0])
         self.assertEqual(mode.current_level, 1)
-        self._confirm_fixture(fixtures[1])
+        self.confirm_fixture(fixtures[1])
 
         # Test on level 2.
         self.assertEqual(mode.current_level, 2)
@@ -740,7 +756,7 @@ class KnockoutTest(ModeTestBase, TestCase):
         self.assertEqual(fixture.player1.id, 1)
         self.assertEqual(fixture.player2.id, 4)
 
-        self._confirm_fixture(fixture)
+        self.confirm_fixture(fixture)
 
         # Test on level 3.
         self.assertEqual(mode.current_level, 3)
@@ -756,6 +772,10 @@ class KnockoutTest(ModeTestBase, TestCase):
         mode = self.test_create_fixtures_5participants()
         expected_placements = [None, None, None, None, None]
         self.assertEqual(mode.placements, expected_placements)
+
+    def test_placements_none(self):
+        mode = Knockout.objects.create(tournament = self.tournament)
+        self.assertIsNone(mode.placements)
 
 
 class FixtureTest(TestCase):
@@ -796,3 +816,63 @@ class FixtureTest(TestCase):
         self.assertEqual(self.fixture.loser.id, self.players[1].id)
         self.fixture.score = (10, 10)
         self.assertIsNone(self.fixture.loser)
+
+
+class TournamentTest(TestCase):
+
+    def setUp(self):
+        self.participants = [
+            User.objects.create(
+                id = user_idx + 1,
+                username = f'user-{user_idx + 1}',
+                password =  'password')
+            for user_idx in range(8)
+        ]
+
+    def test_load_tournament1(self):
+        tournament = Tournament.load(test_tournament1_yml, 'Test Cup')
+        actual_stages = [type(stage) for stage in tournament.stages.all()]
+        expected_stages = [
+            Groups,
+            Knockout,
+            Groups,
+        ]
+        self.assertEqual(actual_stages, expected_stages)
+        return tournament
+
+    def test_load_tournament2(self):
+        tournament = Tournament.load(test_tournament2_yml, 'Test Cup')
+        actual_stages = [type(stage) for stage in tournament.stages.all()]
+        expected_stages = [
+            Knockout,
+            Groups,
+        ]
+        self.assertEqual(actual_stages, expected_stages)
+        return tournament
+
+    def test_current_stage(self):
+        tournament = self.test_load_tournament1()
+        self.assertEqual(tournament.current_stage.id, tournament.stages.all()[0].id)
+
+        _add_participants(self.participants, tournament)
+
+        tournament.current_stage.create_fixtures(self.participants)
+        self.assertEqual(tournament.current_stage.id, tournament.stages.all()[0].id)
+
+        for fixture in tournament.current_stage.fixtures.all():
+            _confirm_fixture(self.participants, fixture)
+        self.assertEqual(tournament.current_stage.id, tournament.stages.all()[1].id)
+
+        tournament.current_stage.create_fixtures(self.participants)
+        self.assertEqual(tournament.current_stage.id, tournament.stages.all()[1].id)
+
+        for fixture in tournament.current_stage.fixtures.all():
+            _confirm_fixture(self.participants, fixture)
+        self.assertEqual(tournament.current_stage.id, tournament.stages.all()[2].id)
+
+        tournament.current_stage.create_fixtures(self.participants)
+        self.assertEqual(tournament.current_stage.id, tournament.stages.all()[2].id)
+
+        for fixture in tournament.current_stage.fixtures.all():
+            _confirm_fixture(self.participants, fixture)
+        self.assertIsNone(tournament.current_stage)
