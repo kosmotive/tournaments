@@ -1,0 +1,32 @@
+{% load static %}
+
+<!doctype html>
+<html lang="en">
+<head>
+<!-- Required meta tags -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+<!-- Bootstrap CSS -->
+<link rel="stylesheet" href="{% static 'frontend/libs/bootstrap/css/bootstrap.min.css' %}">
+
+<title>tournaments :: {% block title %}{% endblock %}</title>
+</head>
+<body>
+
+<header>
+{% block header %}{% endblock %}
+</header>
+
+<div id="content">
+{% block content %}{% endblock %}
+</div>
+
+<!-- Optional JavaScript -->
+<!-- jQuery first, then Popper.js, then Bootstrap JS -->
+<script src="{% static 'frontend/libs/jquery/jquery-3.7.1.min.js' %}"></script>
+<script src="{% static 'frontend/libs/popper/popper-1.12.9.min.js' %}"></script>
+<script src="{% static 'frontend/libs/bootstrap/js/bootstrap.min.js' %}"></script>
+
+</body>
+</html>
