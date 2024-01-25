@@ -2,22 +2,42 @@
 
 <div class="tournament-details">
 
-<h5>{{ tournament.name }}</h5>
+<h4>{{ tournament.name }}</h4>
 
 {% for stage in tournament.stages.all %}
 
-    <h6>{{ stage.name }}</h6>
+    <h5>{{ stage.name }}</h5>
 
     {% with stage_type=stage|get_type %}
         {% if stage_type == 'Groups' %}
 
-            <p><strong>Min group size:</strong> {{ stage.min_group_size }}</p>
-            <p><strong>Max group size:</strong> {{ stage.max_group_size }}</p>
+            {% if stage.max_group_size == 32767 %}
+                <p>Division play.</p>
+            {% elif stage.min_group_size == stage.max_group_size %}
+                <p>Played in groups of {{ stage.min_group_size }} participants.</p>
+            {% else %}
+                <p>Played in groups of {{ stage.min_group_size }}&ndash;{{ stage.max_group_size }} participants.</p>
+            {% endif %}
+
+            {% if stage.with_returns %}
+                <p>With return matches.</p>
+            {% else %}
+                <p>No return matches.</p>
+            {% endif %}
 
         {% elif stage_type == 'Knockout' %}
+
+            {% if stage.double_eliminination %}
+                <p>Double elimination.</p>
+            {% else %}
+                <p>Single elimination.</p>
+            {% endif %}
+
         {% endif %}
     {% endwith %}
 
 {% endfor %}
+
+<h5>Podium</h5>
 
 </div>
