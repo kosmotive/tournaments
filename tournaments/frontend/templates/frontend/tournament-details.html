@@ -1,10 +1,22 @@
+{% load frontend_extras %}
+
 <div class="tournament-details">
 
 <h5>{{ tournament.name }}</h5>
 
 {% for stage in tournament.stages.all %}
 
-<h6>{{ stage.name }}</h6>
+    <h6>{{ stage.name }}</h6>
+
+    {% with stage_type=stage|get_type %}
+        {% if stage_type == 'Groups' %}
+
+            <p><strong>Min group size:</strong> {{ stage.min_group_size }}</p>
+            <p><strong>Max group size:</strong> {{ stage.max_group_size }}</p>
+
+        {% elif stage_type == 'Knockout' %}
+        {% endif %}
+    {% endwith %}
 
 {% endfor %}
 

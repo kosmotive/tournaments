@@ -3,9 +3,45 @@
 {% block title %}index{% endblock %}
 
 {% block header %}
+
 <h1>Tournaments</h1>
 <a href="{% url "create-tournament" %}">Create</a>
+
 {% endblock %}
 
+
 {% block content %}
+
+{% if drafts %}
+
+    <h2>Drafts</h2>
+    
+    {% include "frontend/tournament-list.html" with tournaments=drafts %}
+
+{% endif %}
+
+{% if active %}
+
+    <h2>Active</h2>
+    
+    {% include "frontend/tournament-list.html" with tournaments=active %}
+
+{% endif %}
+
+{% if open %}
+
+    <h2>Open</h2>
+    
+    {% include "frontend/tournament-list.html" with tournaments=open %}
+
+{% endif %}
+
+{% if finished %}
+
+    <h2>Finished</h2>
+    
+    {% include "frontend/tournament-list.html" with tournaments=finished %}
+
+{% endif %}
+
 {% endblock %}

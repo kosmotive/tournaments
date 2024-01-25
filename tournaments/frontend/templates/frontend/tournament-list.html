@@ -1,0 +1,10 @@
+<ul class="tournament-list">
+{% for tournament in tournaments %}
+
+    <li class="tournament-item">
+        {% include "frontend/tournament-details.html" with tournament=tournament %}
+        <a href="{% url 'update-tournament' pk=tournament.id %}">Edit</a>
+    </li>
+
+{% endfor %}
+</ul>

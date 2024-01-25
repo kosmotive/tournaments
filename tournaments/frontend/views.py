@@ -1,6 +1,7 @@
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic import ListView, View
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.db.models import Count, Q
+from django.views.generic import DeleteView, ListView, View
 from django.views.generic.detail import SingleObjectMixin
 from django.views.generic.edit import FormView
 from django.shortcuts import redirect
@@ -10,11 +11,31 @@ from tournaments import models
 from .forms import CreateTournamentForm, UpdateTournamentForm
 
 
+class IsCreatorMixin(LoginRequiredMixin, UserPassesTestMixin):
+
+    def test_func(self):
+        object = self.get_object()
+        return object.creator is not None and self.request.user is not None and object.creator.id == self.request.user.id
+
+
 class IndexView(ListView):
 
     context_object_name = 'tournaments'
     queryset = models.Tournament.objects
     template_name = 'frontend/index.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(IndexView, self).get_context_data(**kwargs)
+        published_tournaments = self.queryset.filter(published = True).annotate(
+            fixtures = Count('stages__fixtures'),
+            podium = Count('participations', filter = Q(participations__podium_position__isnull = False)))
+
+        context['drafts']   = self.queryset.filter(published = False)
+        context['open']     = published_tournaments.filter(fixtures = 0)
+        context['active']   = published_tournaments.filter(fixtures__gte = 1, podium = 0)
+        context['finished'] = published_tournaments.filter(podium__gte = 1)
+
+        return context
 
 
 class CreateTournamentView(LoginRequiredMixin, FormView):
@@ -27,7 +48,7 @@ class CreateTournamentView(LoginRequiredMixin, FormView):
         return redirect('update-tournament', pk = tournament.id)
 
 
-class UpdateTournamentView(LoginRequiredMixin, SingleObjectMixin, FormView):
+class UpdateTournamentView(IsCreatorMixin, SingleObjectMixin, FormView):
 
     form_class = UpdateTournamentForm
     template_name = 'frontend/update-tournament.html'
@@ -54,11 +75,23 @@ class UpdateTournamentView(LoginRequiredMixin, SingleObjectMixin, FormView):
         return data
 
 
-class PublishTournamentView(LoginRequiredMixin, View):
+class PublishTournamentView(IsCreatorMixin, SingleObjectMixin, View):
+
+    model = models.Tournament
 
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
-        # TODO: require that request.user is the owner
         self.object.published = True
         self.object.save()
         return redirect('update-tournament', pk = self.object.id)
+
+
+class DeleteTournamentView(IsCreatorMixin, SingleObjectMixin, View):
+
+    model = models.Tournament
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        self.object.stages.all().delete()
+        self.object.delete()
+        return redirect('index')
