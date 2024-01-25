@@ -14,16 +14,19 @@ import numpy as np
 class Tournament(models.Model):
 
     name = models.CharField(blank = False, max_length = 100)
+    definition = models.TextField(null = True)
     podium_spec = models.JSONField()
+    published = models.BooleanField(default = False)
+    creator = models.ForeignKey('auth.User', on_delete = models.SET_NULL, related_name = 'tournaments', null = True)
 
     @staticmethod
-    def load(definition, name):
+    def load(definition, name, creator = None):
         if isinstance(definition, str):
             import yaml
             definition = yaml.safe_load(definition)
 
         assert isinstance(definition, dict), repr(definition)
-        tournament = Tournament.objects.create(name = name, podium_spec = definition['podium'])
+        tournament = Tournament.objects.create(name = name, podium_spec = definition['podium'], creator = creator)
 
         for stage in definition['stages']:
             stage = {key.replace('-', '_'): value for key, value in stage.items()}

@@ -1,0 +1,11 @@
+<div class="tournament-details">
+
+<h5>{{ tournament.name }}</h5>
+
+{% for stage in tournament.stages.all %}
+
+<h6>{{ stage.name }}</h6>
+
+{% endfor %}
+
+</div>

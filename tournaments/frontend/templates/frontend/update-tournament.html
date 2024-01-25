@@ -1,0 +1,29 @@
+{% extends "frontend/base.html" %}
+
+{% block title %}update{% endblock %}
+
+{% block header %}
+
+<h1>Update Tournament</h1>
+
+{% endblock %}
+
+{% block content %}
+
+{% if form.errors %}
+<p>{{ form.errors }}</p>
+{% endif %}
+
+{% if not object.published %}
+<form method="post" action="{% url 'update-tournament' pk=object.id %}">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="submit" value="Save">
+</form>
+
+<a href="{% url 'publish-tournament' pk=object.id %}">Publish</a>
+{% endif %}
+
+{% include "frontend/tournament-details.html" with tournament=object %}
+
+{% endblock %}
