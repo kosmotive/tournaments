@@ -78,7 +78,23 @@
 
         <li class="list-group-item">
 
-            {{ buttons }}
+            {% if buttons %}
+
+                {{ buttons }}
+
+            {% else %}
+
+                {% if tournament.state == 'open' %}
+
+                    <a class="btn btn-primary" href="{% url 'update-tournament' pk=tournament.id %}" role="button"><i class="bi bi-check-lg"></i> Join</a>
+
+                {% else %}
+
+                    <a class="btn btn-primary" href="{% url 'update-tournament' pk=tournament.id %}" role="button"><i class="bi bi-table"></i> Details</a>
+
+                {% endif %}
+
+            {% endif %}
         
         </li>
     

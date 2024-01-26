@@ -46,12 +46,12 @@ class IndexView(VersionInfoMixin, ListView):
 
         published_tournaments = self.queryset.filter(published = True).annotate(
             fixtures = Count('stages__fixtures'),
-            podium = Count('participations', filter = Q(participations__podium_position__isnull = False)))
+            podium_size = Count('participations', filter = Q(participations__podium_position__isnull = False)))
 
         context['drafts']   = self.queryset.filter(published = False)
         context['open']     = published_tournaments.filter(fixtures = 0)
-        context['active']   = published_tournaments.filter(fixtures__gte = 1, podium = 0)
-        context['finished'] = published_tournaments.filter(podium__gte = 1)
+        context['active']   = published_tournaments.filter(fixtures__gte = 1, podium_size = 0)
+        context['finished'] = published_tournaments.filter(podium_size__gte = 1)
 
         return context
 
