@@ -1,6 +1,7 @@
 {% extends "frontend/base.html" %}
 
 {% load crispy_forms_tags %}
+{% load capture_tags %}
 
 {% block title %}update{% endblock %}
 
@@ -12,23 +13,25 @@
 
 {% block content %}
 
-{% if form.errors %}
-<p>{{ form.errors }}</p>
-{% endif %}
-
 {% if not object.published %}
-<form method="post" action="{% url 'update-tournament' pk=object.id %}">
-    {% csrf_token %}
-    {{ form|crispy }}
-    <button class="btn btn-primary" type="submit"><i class="bi bi-floppy-fill"></i> Preview</button>
-</form>
-{% endif %}
 
-{% include "frontend/tournament-details.html" with tournament=object %}
+    <form method="post" action="{% url 'update-tournament' pk=object.id %}" class="mb-5">
+        {% csrf_token %}
+        {{ form|crispy }}
+        <button class="btn btn-primary" type="submit"><i class="bi bi-floppy-fill"></i> Preview</button>
+    </form>
 
-{% if not object.published %}
-<a class="btn btn-danger" href="{% url 'delete-tournament' pk=object.id %}" role="button"><i class="bi bi-trash3-fill"></i> Delete</a>
-<a class="btn btn-success" href="{% url 'publish-tournament' pk=object.id %}" role="button"><i class="bi bi-eye-fill"></i> Publish</a>
+    {% capture silent %}
+    <a class="btn btn-danger" href="{% url 'delete-tournament' pk=object.id %}" role="button"><i class="bi bi-trash3-fill"></i> Delete</a>
+    <a class="btn btn-success" href="{% url 'publish-tournament' pk=object.id %}" role="button"><i class="bi bi-eye-fill"></i> Publish</a>
+    {% endcapture %}
+
+    {% include "frontend/tournament-details.html" with tournament=object buttons=capture %}
+
+{% else %}
+
+    {% include "frontend/tournament-details.html" with tournament=object %}
+
 {% endif %}
 
 {% endblock %}

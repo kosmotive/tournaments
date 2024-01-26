@@ -5,7 +5,7 @@
 {% block header %}
 
 <h1>Tournaments</h1>
-<a href="{% url "create-tournament" %}">Create</a>
+<a href="{% url "create-tournament" %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Create</a>
 
 {% endblock %}
 
@@ -14,7 +14,8 @@
 
 {% if drafts %}
 
-    <h2>Drafts</h2>
+    <hr>
+    <h2>Your Drafts</h2>
     
     {% include "frontend/tournament-list.html" with tournaments=drafts %}
 
@@ -22,6 +23,7 @@
 
 {% if active %}
 
+    <hr>
     <h2>Active</h2>
     
     {% include "frontend/tournament-list.html" with tournaments=active %}
@@ -30,6 +32,7 @@
 
 {% if open %}
 
+    <hr>
     <h2>Open</h2>
     
     {% include "frontend/tournament-list.html" with tournaments=open %}
@@ -38,6 +41,7 @@
 
 {% if finished %}
 
+    <hr>
     <h2>Finished</h2>
     
     {% include "frontend/tournament-list.html" with tournaments=finished %}

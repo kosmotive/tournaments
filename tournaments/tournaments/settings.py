@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'polymorphic',
     'crispy_forms',
     'crispy_bootstrap4',
+    'capture_tag',
     'tournaments',
     'frontend',
 ]

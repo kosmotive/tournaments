@@ -1,9 +1,13 @@
+{% load capture_tags %}
+
 <ul class="tournament-list">
 {% for tournament in tournaments %}
 
     <li class="tournament-item">
-        {% include "frontend/tournament-details.html" with tournament=tournament %}
+        {% capture silent %}
         <a class="btn btn-primary" href="{% url 'update-tournament' pk=tournament.id %}" role="button"><i class="bi bi-pencil-square"></i> Edit</a>
+        {% endcapture %}
+        {% include "frontend/tournament-details.html" with tournament=tournament buttons=capture %}
     </li>
 
 {% endfor %}

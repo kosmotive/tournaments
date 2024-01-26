@@ -4,11 +4,13 @@
 <div class="card-body">
 
     <h4 class="card-title">{{ tournament.name }}</h4>
+
+    <p>Created by {{ tournament.creator }}.</p>
     
     <ul class="list-group list-group-flush">
     
         {% for stage in tournament.stages.all %}
-        <li class="list-group-item">
+        <li class="list-group-item"><small>
         
             <h5>{{ stage.name }}</h5>
         
@@ -57,10 +59,10 @@
                 <p><strong>Played by:</strong> All participants</p>
             {% endif %}
         
-        </li>
+        </small></li>
         {% endfor %}
     
-        <li class="list-group-item">
+        <li class="list-group-item"><small>
         
             <h5>Podium</h5>
             
@@ -71,6 +73,12 @@
             
             {% endfor %}
             </ol>
+        
+        </small></li>
+
+        <li class="list-group-item">
+
+            {{ buttons }}
         
         </li>
     

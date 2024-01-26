@@ -10,6 +10,7 @@ from django.urls import reverse
 from tournaments import models
 
 from .forms import CreateTournamentForm, UpdateTournamentForm
+from .git import get_head_info
 
 
 class IsCreatorMixin(LoginRequiredMixin, UserPassesTestMixin):
@@ -23,7 +24,15 @@ def create_breadcrumb(items):
     return [(f'<a href="{ item["url"] }">{ item["label"] }</a>' if item_idx + 1 < len(items) else item['label']) for item_idx, item in enumerate(items)]
 
 
-class IndexView(ListView):
+class VersionInfoMixin:
+
+    def get_context_data(self, **kwargs):
+        context = super(VersionInfoMixin, self).get_context_data(**kwargs)
+        context['version'] = get_head_info()
+        return context
+
+
+class IndexView(VersionInfoMixin, ListView):
 
     context_object_name = 'tournaments'
     queryset = models.Tournament.objects
@@ -47,7 +56,7 @@ class IndexView(ListView):
         return context
 
 
-class CreateTournamentView(LoginRequiredMixin, FormView):
+class CreateTournamentView(LoginRequiredMixin, VersionInfoMixin, FormView):
 
     form_class = CreateTournamentForm
     template_name = 'frontend/create-tournament.html'
@@ -65,7 +74,7 @@ class CreateTournamentView(LoginRequiredMixin, FormView):
         return context
 
 
-class UpdateTournamentView(IsCreatorMixin, SingleObjectMixin, FormView):
+class UpdateTournamentView(IsCreatorMixin, SingleObjectMixin, VersionInfoMixin, FormView):
 
     form_class = UpdateTournamentForm
     template_name = 'frontend/update-tournament.html'
