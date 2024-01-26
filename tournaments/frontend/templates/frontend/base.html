@@ -3,33 +3,60 @@
 <!doctype html>
 <html lang="en">
 <head>
+
 <!-- Required meta tags -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
 <!-- Bootstrap CSS -->
-<link rel="stylesheet" href="{% static 'frontend/libs/bootstrap/css/bootstrap.min.css' %}">
+<link rel="stylesheet" href="{% static 'frontend/libs/bootstrap-4.0.0/css/bootstrap.min.css' %}">
+<link rel="stylesheet" href="{% static 'frontend/libs/bootstrap-icons-1.11.3/font/bootstrap-icons.css' %}">
+
+<!-- Custom CSS -->
+<style>
+.textarea-monospace {
+    font-family: monospace;
+    font-size: 0.8em;
+}
+</style>
 
 <title>tournaments :: {% block title %}{% endblock %}</title>
 </head>
 <body>
 
-<header>
-{% block header %}{% endblock %}
-</header>
+<main role="main" class="container">
 
-<div id="content">
-{% block content %}{% endblock %}
-</div>
+    <div class="page-header">
+        {% if breadcrumb %}
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+            {% for item in breadcrumb %}
+                {% if forloop.last %}
+                    <li class="breadcrumb-item active" aria-current="page">{{ item | safe }}</li>
+                {% else %}
+                    <li class="breadcrumb-item">{{ item | safe }}</li>
+                {% endif %}
+            {% endfor %}
+            </ol>
+        </nav>
+        {% endif %}
+        {% block header %}{% endblock %}
+    </div>
+    
+    <div id="content">
+        {% block content %}{% endblock %}
+    </div>
+    
+    <hr>
+    <p class="text-muted"><small>
+    <b>Copyright &copy; 2024.</b>
+    Contribute on <a href="https://github.com/kostrykin/tournaments"><i class="bi bi-github" style="vertical-align: baseline;"></i> GitHub</a>.
+    </small></p>
 
-<hr>
-<p class="text-muted"><small>
-<b>Copyright &copy; 2024.</b>
-Contribute on <a href="https://github.com/kostrykin/tournaments"><img src="{% static 'frontend/libs/bootstrap-icons-1.11.3/github.svg' %}" style="height: 1em; width: 1em; vertical-align: baseline;"> GitHub</a>.
-</small></p>
+</main>
 
 <!-- Bootstrap JavaScript -->
-<script src="{% static 'frontend/libs/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+<script src="{% static 'frontend/libs/bootstrap-4.0.0/js/bootstrap.bundle.min.js' %}"></script>
 
 </body>
 </html>

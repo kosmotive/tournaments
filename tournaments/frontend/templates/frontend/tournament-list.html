@@ -3,7 +3,7 @@
 
     <li class="tournament-item">
         {% include "frontend/tournament-details.html" with tournament=tournament %}
-        <a href="{% url 'update-tournament' pk=tournament.id %}">Edit</a>
+        <a class="btn btn-primary" href="{% url 'update-tournament' pk=tournament.id %}" role="button"><i class="bi bi-pencil-square"></i> Edit</a>
     </li>
 
 {% endfor %}

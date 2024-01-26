@@ -1,68 +1,80 @@
 {% load frontend_extras %}
 
-<div class="tournament-details">
+<div class="tournament-details card">
+<div class="card-body">
 
-<h4>{{ tournament.name }}</h4>
-
-{% for stage in tournament.stages.all %}
-
-    <h5>{{ stage.name }}</h5>
-
-    {% with stage_type=stage|get_type %}
-        {% if stage_type == 'Groups' %}
-
-            {% if stage.max_group_size == 32767 %}
-                {% if stage.played_by|length == 2 %}
-                    <p>Play-off.</p>
-                {% else %}
-                    <p>Division play.</p>
+    <h4 class="card-title">{{ tournament.name }}</h4>
+    
+    <ul class="list-group list-group-flush">
+    
+        {% for stage in tournament.stages.all %}
+        <li class="list-group-item">
+        
+            <h5>{{ stage.name }}</h5>
+        
+            {% with stage_type=stage|get_type %}
+                {% if stage_type == 'Groups' %}
+        
+                    {% if stage.max_group_size == 32767 %}
+                        {% if stage.played_by|length == 2 %}
+                            <p>Play-off.</p>
+                        {% else %}
+                            <p>Division play.</p>
+                        {% endif %}
+                    {% elif stage.min_group_size == stage.max_group_size %}
+                        <p>Played in groups of {{ stage.min_group_size }} participants.</p>
+                    {% else %}
+                        <p>Played in groups of {{ stage.min_group_size }}&ndash;{{ stage.max_group_size }} participants.</p>
+                    {% endif %}
+        
+                    {% if stage.with_returns %}
+                        <p>With return matches.</p>
+                    {% else %}
+                        <p>No return matches.</p>
+                    {% endif %}
+        
+                {% elif stage_type == 'Knockout' %}
+        
+                    {% if stage.double_eliminination %}
+                        <p>Knockout, double elimination.</p>
+                    {% else %}
+                        <p>Knockout, single elimination.</p>
+                    {% endif %}
+        
                 {% endif %}
-            {% elif stage.min_group_size == stage.max_group_size %}
-                <p>Played in groups of {{ stage.min_group_size }} participants.</p>
-            {% else %}
-                <p>Played in groups of {{ stage.min_group_size }}&ndash;{{ stage.max_group_size }} participants.</p>
-            {% endif %}
-
-            {% if stage.with_returns %}
-                <p>With return matches.</p>
-            {% else %}
-                <p>No return matches.</p>
-            {% endif %}
-
-        {% elif stage_type == 'Knockout' %}
-
-            {% if stage.double_eliminination %}
-                <p>Double elimination.</p>
-            {% else %}
-                <p>Single elimination.</p>
-            {% endif %}
-
-        {% endif %}
-    {% endwith %}
-
-    {% if stage.played_by %}
-        <p><strong>Played by:</strong></p>
-        <ol>
-        {% for participants in stage.played_by|parse_participants:tournament %}
+            {% endwith %}
         
-            <li>{{ participants }}</li>
+            {% if stage.played_by %}
+                <p><strong>Played by:</strong></p>
+                <ol>
+                {% for participants in stage.played_by|parse_participants:tournament %}
+                
+                    <li>{{ participants }}</li>
+                
+                {% endfor %}
+                </ol>
+            {% else %}
+                <p><strong>Played by:</strong> All participants</p>
+            {% endif %}
         
+        </li>
         {% endfor %}
-        </ol>
-    {% else %}
-        <p><strong>Played by:</strong> All participants</p>
-    {% endif %}
+    
+        <li class="list-group-item">
+        
+            <h5>Podium</h5>
+            
+            <ol>
+            {% for participants in tournament.podium_spec|parse_participants:tournament %}
+            
+                <li>{{ participants }}</li>
+            
+            {% endfor %}
+            </ol>
+        
+        </li>
+    
+    </ul>
 
-{% endfor %}
-
-<h5>Podium</h5>
-
-<ol>
-{% for participants in tournament.podium_spec|parse_participants:tournament %}
-
-    <li>{{ participants }}</li>
-
-{% endfor %}
-</ol>
-
+</div>
 </div>

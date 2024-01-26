@@ -5,6 +5,7 @@ from django.views.generic import DeleteView, ListView, View
 from django.views.generic.detail import SingleObjectMixin
 from django.views.generic.edit import FormView
 from django.shortcuts import redirect
+from django.urls import reverse
 
 from tournaments import models
 
@@ -18,6 +19,10 @@ class IsCreatorMixin(LoginRequiredMixin, UserPassesTestMixin):
         return object.creator is not None and self.request.user is not None and object.creator.id == self.request.user.id
 
 
+def create_breadcrumb(items):
+    return [(f'<a href="{ item["url"] }">{ item["label"] }</a>' if item_idx + 1 < len(items) else item['label']) for item_idx, item in enumerate(items)]
+
+
 class IndexView(ListView):
 
     context_object_name = 'tournaments'
@@ -26,6 +31,10 @@ class IndexView(ListView):
 
     def get_context_data(self, **kwargs):
         context = super(IndexView, self).get_context_data(**kwargs)
+        context['breadcrumb'] = create_breadcrumb([
+            dict(label = 'Index', url = reverse('index')),
+        ])
+
         published_tournaments = self.queryset.filter(published = True).annotate(
             fixtures = Count('stages__fixtures'),
             podium = Count('participations', filter = Q(participations__podium_position__isnull = False)))
@@ -46,6 +55,14 @@ class CreateTournamentView(LoginRequiredMixin, FormView):
     def form_valid(self, form):
         tournament = form.create_tournament(self.request)
         return redirect('update-tournament', pk = tournament.id)
+
+    def get_context_data(self, **kwargs):
+        context = super(CreateTournamentView, self).get_context_data(**kwargs)
+        context['breadcrumb'] = create_breadcrumb([
+            dict(label = 'Index', url = reverse('index')),
+            dict(label = 'Create Tournament', url = self.request.path),
+        ])
+        return context
 
 
 class UpdateTournamentView(IsCreatorMixin, SingleObjectMixin, FormView):
@@ -73,6 +90,14 @@ class UpdateTournamentView(IsCreatorMixin, SingleObjectMixin, FormView):
             definition = self.get_object().definition,
         )
         return data
+
+    def get_context_data(self, **kwargs):
+        context = super(UpdateTournamentView, self).get_context_data(**kwargs)
+        context['breadcrumb'] = create_breadcrumb([
+            dict(label = 'Index', url = reverse('index')),
+            dict(label = self.object.name, url = self.request.path),
+        ])
+        return context
 
 
 class PublishTournamentView(IsCreatorMixin, SingleObjectMixin, View):

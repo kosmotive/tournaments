@@ -1,5 +1,7 @@
 {% extends "frontend/base.html" %}
 
+{% load crispy_forms_tags %}
+
 {% block title %}create{% endblock %}
 
 {% block header %}
@@ -16,8 +18,8 @@
 
 <form method="post" action="{% url 'create-tournament' %}">
     {% csrf_token %}
-    {{ form.as_p }}
-    <input type="submit" value="Preview">
+    {{ form|crispy }}
+    <button class="btn btn-primary" type="submit"><i class="bi bi-floppy-fill"></i> Preview</button>
 </form>
 
 {% endblock %}

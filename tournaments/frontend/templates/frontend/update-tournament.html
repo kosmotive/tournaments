@@ -1,5 +1,7 @@
 {% extends "frontend/base.html" %}
 
+{% load crispy_forms_tags %}
+
 {% block title %}update{% endblock %}
 
 {% block header %}
@@ -17,14 +19,16 @@
 {% if not object.published %}
 <form method="post" action="{% url 'update-tournament' pk=object.id %}">
     {% csrf_token %}
-    {{ form.as_p }}
-    <input type="submit" value="Save">
+    {{ form|crispy }}
+    <button class="btn btn-primary" type="submit"><i class="bi bi-floppy-fill"></i> Preview</button>
 </form>
-
-<a href="{% url 'publish-tournament' pk=object.id %}">Publish</a>
-<a href="{% url 'delete-tournament' pk=object.id %}">Delete</a>
 {% endif %}
 
 {% include "frontend/tournament-details.html" with tournament=object %}
+
+{% if not object.published %}
+<a class="btn btn-danger" href="{% url 'delete-tournament' pk=object.id %}" role="button"><i class="bi bi-trash3-fill"></i> Delete</a>
+<a class="btn btn-success" href="{% url 'publish-tournament' pk=object.id %}" role="button"><i class="bi bi-eye-fill"></i> Publish</a>
+{% endif %}
 
 {% endblock %}

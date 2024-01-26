@@ -22,5 +22,4 @@ def parse_participants(participants_str_list, tournament):
         stage = tournament.stages.get(identifier = identifier)
         which = slice_to_str(placements_slice)
         participants.append(f'{which} of {stage.name}')
-    print(participants)
     return participants
