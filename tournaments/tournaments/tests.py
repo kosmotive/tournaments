@@ -24,7 +24,7 @@ test_tournament1_yml = \
     stages:
     - 
       id: preliminaries
-      name: Group ${ group_letter }
+      name: Preliminaries
       mode: groups
       min-group-size: 3
       max-group-size: 4
@@ -37,7 +37,7 @@ test_tournament1_yml = \
       - preliminaries.placements[1]
     -
       id: playoffs
-      name: Playoffs
+      name: Match for 3rd Place
       mode: division
       played-by:
       - main_round.placements[2]
@@ -58,7 +58,6 @@ test_tournament2_yml = \
       double-elimination: true
     -
       id: playoffs
-      name: Playoffs
       mode: division
       played-by:
       - main_round.placements[2]

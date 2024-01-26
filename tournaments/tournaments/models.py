@@ -282,11 +282,6 @@ def get_stats(participant, filters = dict()):
 
 class Groups(Mode):
 
-    non_polymorphic = models.Manager()
-
-    class Meta:
-        base_manager_name = 'non_polymorphic'
-
     min_group_size = models.PositiveSmallIntegerField()
     max_group_size = models.PositiveSmallIntegerField()
     with_returns   = models.BooleanField(default = False)
@@ -344,11 +339,6 @@ class Groups(Mode):
 class Knockout(Mode):
 
     double_elimination = models.BooleanField(default = False)
-
-    non_polymorphic = models.Manager()
-
-    class Meta:
-        base_manager_name = 'non_polymorphic'
 
     def create_fixtures(self, participants):
         assert len(participants) >= 2

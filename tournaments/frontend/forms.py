@@ -32,5 +32,6 @@ class CreateTournamentForm(forms.Form):
 class UpdateTournamentForm(CreateTournamentForm):
 
     def update_tournament(self, request, tournament):
+        tournament.stages.non_polymorphic().all().delete()
         tournament.delete()
         return self.create_tournament(request)
