@@ -30,6 +30,7 @@ def slice_to_str(sl):
 @register.filter
 def parse_participants(participants_str_list, tournament):
     participants = list()
+    return participants
     for identifier, placements_slice in parse_participants_str_list(participants_str_list):
         stage = tournament.stages.get(identifier = identifier)
         which = slice_to_str(placements_slice)

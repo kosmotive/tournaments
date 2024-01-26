@@ -40,13 +40,16 @@ class Tournament(models.Model):
             if mode_type == 'groups':
                 mode = Groups.objects.create(**stage)
 
-            if mode_type == 'knockout':
+            elif mode_type == 'knockout':
                 mode = Knockout.objects.create(**stage)
 
-            if mode_type == 'division':
+            elif mode_type == 'division':
                 stage['min_group_size'] = 2
                 stage['max_group_size'] = 32767 ## https://docs.djangoproject.com/en/5.0/ref/models/fields/#positivesmallintegerfield
                 mode = Groups.objects.create(**stage)
+
+            else:
+                raise ValidationError(f'Unknown mode: "{mode_type}"')
 
         return tournament
 
@@ -410,7 +413,7 @@ class Knockout(Mode):
 
     def check_fixture(self, fixture):
         if fixture.score1 is not None and fixture.score2 is not None and fixture.score1 == fixture.score2:
-            raise ValidationError('draws are not allowed in knockout mode')
+            raise ValidationError('Draws are not allowed in knockout mode')
 
     @property
     def placements(self):

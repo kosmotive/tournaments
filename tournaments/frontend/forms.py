@@ -1,6 +1,7 @@
 import yaml
 from django import forms
 from django.core.exceptions import ValidationError
+from django.db import transaction
 
 from tournaments import models
 
@@ -10,14 +11,25 @@ class CreateTournamentForm(forms.Form):
     name = forms.CharField(label = 'Name', max_length = 100, required = True)
     definition = forms.CharField(label = 'Definition', widget = forms.Textarea(attrs = {'class': 'textarea-monospace'}), required = True)
 
+    @transaction.atomic
+    def validate_definition(self, definition):
+        models.Tournament.load(definition = definition, name = 'Test')
+        transaction.set_rollback(True)
+
     def clean_definition(self):
         definition_str = self.cleaned_data['definition']
+
+        # Check for syntactic correctness.
         try:
             definition = yaml.safe_load(definition_str)
             assert isinstance(definition, dict)
-            return definition
         except:
             raise ValidationError('Definition must be supplied in valid YAML.')
+
+        # Check for semantic correctness.
+        self.validate_definition(definition)
+
+        return definition
 
     def create_tournament(self, request):
         tournament = models.Tournament.load(
