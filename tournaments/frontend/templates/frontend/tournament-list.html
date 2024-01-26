@@ -1,23 +1,20 @@
 {% load capture_tags %}
 
-<ul class="tournament-list">
+<div class="tournament-list card-columns">
 {% for tournament in tournaments %}
 
-    <li class="tournament-item">
+    {% if not tournament.published %}
 
-        {% if not tournament.published %}
+        {% capture silent %}
+            <a class="btn btn-primary" href="{% url 'update-tournament' pk=tournament.id %}" role="button"><i class="bi bi-pencil-square"></i> Edit</a>
+        {% endcapture %}
+        {% include "frontend/tournament-details.html" with tournament=tournament buttons=capture %}
 
-            {% capture silent %}
-                <a class="btn btn-primary" href="{% url 'update-tournament' pk=tournament.id %}" role="button"><i class="bi bi-pencil-square"></i> Edit</a>
-            {% endcapture %}
-            {% include "frontend/tournament-details.html" with tournament=tournament buttons=capture %}
+    {% else %}
 
-        {% else %}
+        {% include "frontend/tournament-details.html" with tournament=tournament %}
 
-            {% include "frontend/tournament-details.html" with tournament=tournament %}
-
-        {% endif %}
-    </li>
+    {% endif %}
 
 {% endfor %}
-</ul>
+</div>

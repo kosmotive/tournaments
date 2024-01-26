@@ -11,8 +11,20 @@ def get_type(value):
     return type(value).__name__
 
 
+def position_to_str(pos):
+    pos = str(int(pos))
+    if pos.endswith('1'):
+        return f'{pos}st'
+    if pos.endswith('2'):
+        return f'{pos}nd'
+    if pos.endswith('3'):
+        return f'{pos}rd'
+    else:
+        return f'{pos}th'
+
+
 def slice_to_str(sl):
-    return ', '.join((f'{item + 1}.' for item in range(sl.stop)[sl]))
+    return ', '.join((f'{position_to_str(item + 1)}' for item in range(sl.stop)[sl]))
 
 
 @register.filter
@@ -21,5 +33,10 @@ def parse_participants(participants_str_list, tournament):
     for identifier, placements_slice in parse_participants_str_list(participants_str_list):
         stage = tournament.stages.get(identifier = identifier)
         which = slice_to_str(placements_slice)
-        participants.append(f'{which} of {stage.name}')
+        if stage.name:
+            stage_name = stage.name
+        else:
+            stage_position = [stage.id for stage in tournament.stages.all()].index(stage.id)
+            stage_name = f'Tournament Stage {stage_position + 1}'
+        participants.append(f'{which} of {stage_name}')
     return participants

@@ -1,31 +1,39 @@
 {% load frontend_extras %}
+{% load capture_tags %}
 
-<div class="tournament-details card">
+<div class="tournament-details card bg-light">
 <div class="card-body">
 
     <h4 class="card-title">{{ tournament.name }}</h4>
-
-    <p>Created by {{ tournament.creator }}.</p>
+    <h6 class="card-subtitle mb-2 text-muted">Created by {{ tournament.creator }}</h6>
     
     <ul class="list-group list-group-flush">
     
         {% for stage in tournament.stages.all %}
         <li class="list-group-item"><small>
-        
-            <h5>{{ stage.name }}</h5>
+
+            {% if stage.name %}
+                {% capture as stage_name silent %}{{ stage.name }}{% endcapture %}
+            {% else %}
+                {% capture as stage_name silent %}Stage {{ forloop.counter }}{% endcapture %}
+            {% endif %}
         
             {% with stage_type=stage|get_type %}
                 {% if stage_type == 'Groups' %}
         
                     {% if stage.max_group_size == 32767 %}
                         {% if stage.played_by|length == 2 %}
+                            <h5><i class="bi bi-x-lg"></i> {{ stage_name }}</h5>
                             <p>Play-off.</p>
                         {% else %}
+                            <h5><i class="bi bi-table"></i> {{ stage_name }}</h5>
                             <p>Division play.</p>
                         {% endif %}
-                    {% elif stage.min_group_size == stage.max_group_size %}
+                    {% elif stage.min_group_size == stage.max_group_size %} 
+                        <h5><i class="bi bi-table"></i> {{ stage_name }}</h5>
                         <p>Played in groups of {{ stage.min_group_size }} participants.</p>
                     {% else %}
+                        <h5><i class="bi bi-table"></i> {{ stage_name }}</h5>
                         <p>Played in groups of {{ stage.min_group_size }}&ndash;{{ stage.max_group_size }} participants.</p>
                     {% endif %}
         
@@ -36,6 +44,8 @@
                     {% endif %}
         
                 {% elif stage_type == 'Knockout' %}
+
+                    <h5><i class="bi bi-diagram-2"></i> {{ stage_name }}</h5>
         
                     {% if stage.double_eliminination %}
                         <p>Knockout, double elimination.</p>
@@ -64,7 +74,7 @@
     
         <li class="list-group-item"><small>
         
-            <h5>Podium</h5>
+            <h5><i class="bi bi-trophy"></i> Podium</h5>
             
             <ol>
             {% for participants in tournament.podium_spec|parse_participants:tournament %}
@@ -87,6 +97,12 @@
                 {% if tournament.state == 'open' %}
 
                     <a class="btn btn-primary" href="{% url 'update-tournament' pk=tournament.id %}" role="button"><i class="bi bi-check-lg"></i> Join</a>
+
+                    {% if tournament.creator == user %}
+
+                        <a class="btn btn-warning" href="{% url 'update-tournament' pk=tournament.id %}" role="button"><i class="bi bi-play-fill"></i> Start</a>
+
+                    {% endif %}
 
                 {% else %}
 
