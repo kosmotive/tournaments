@@ -83,8 +83,7 @@ class Tournament(models.Model):
 
     def _get_podium(self):
         podium = list()
-        for podium_entry in self.podium_spec:
-            identifier, placements_slice = parse_placements_str(podium_entry)
+        for identifier, placements_slice in parse_participants_str_list(self.podium_spec):
             podium_chunk = unwrap_list(self.stages.get(identifier = identifier).placements[placements_slice])
             if isinstance(podium_chunk, list):
                 podium += podium_chunk
@@ -111,6 +110,10 @@ class Participation(models.Model):
             ('tournament', 'user'),
             ('tournament', 'podium_position'),
         ]
+
+
+def parse_participants_str_list(participants_str_list):
+    return [parse_placements_str(participants_str) for participants_str in participants_str_list]
 
 
 def parse_placements_str(played_by):
@@ -159,8 +162,7 @@ class Mode(PolymorphicModel):
         if len(self.played_by) == 0:
             return self.tournament.participants
         participants = list()
-        for played_by in self.played_by:
-            identifier, placements_slice = parse_placements_str(played_by)
+        for identifier, placements_slice in parse_participants_str_list(self.played_by):
             participants_chunk = unwrap_list(self.tournament.stages.get(identifier = identifier).placements[placements_slice])
             if isinstance(participants_chunk, list):
                 participants += participants_chunk

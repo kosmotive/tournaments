@@ -12,7 +12,11 @@
         {% if stage_type == 'Groups' %}
 
             {% if stage.max_group_size == 32767 %}
-                <p>Division play.</p>
+                {% if stage.played_by|length == 2 %}
+                    <p>Play-off.</p>
+                {% else %}
+                    <p>Division play.</p>
+                {% endif %}
             {% elif stage.min_group_size == stage.max_group_size %}
                 <p>Played in groups of {{ stage.min_group_size }} participants.</p>
             {% else %}
@@ -36,8 +40,29 @@
         {% endif %}
     {% endwith %}
 
+    {% if stage.played_by %}
+        <p><strong>Played by:</strong></p>
+        <ol>
+        {% for participants in stage.played_by|parse_participants:tournament %}
+        
+            <li>{{ participants }}</li>
+        
+        {% endfor %}
+        </ol>
+    {% else %}
+        <p><strong>Played by:</strong> All participants</p>
+    {% endif %}
+
 {% endfor %}
 
 <h5>Podium</h5>
+
+<ol>
+{% for participants in tournament.podium_spec|parse_participants:tournament %}
+
+    <li>{{ participants }}</li>
+
+{% endfor %}
+</ol>
 
 </div>
