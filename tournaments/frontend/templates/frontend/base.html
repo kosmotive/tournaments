@@ -44,7 +44,25 @@
             </ol>
         </nav>
         {% endif %}
-        {% block header %}{% endblock %}
+        <div class="row align-items-start">
+            <div class="col-8">
+                {% block header %}{% endblock %}
+            </div>
+            <div class="col-4 text-right">
+
+                {% if user.id %}
+
+                    <h1><small class="text-muted"><i class="bi bi-person"></i> {{ user }}</small></h1>
+                    <a class="btn btn-light" href="{% url 'logout' %}" role="button"><i class="bi bi-door-open"></i> Logout</a>
+
+                {% else %}
+
+                    <a class="btn btn-light" href="{% url 'login' %}" role="button"><i class="bi bi-door-open"></i> Login</a>
+
+                {% endif %}
+
+            </div>
+        </div>
     </div>
     
     <div id="content">
@@ -64,6 +82,11 @@
 
 <!-- Bootstrap JavaScript -->
 <script src="{% static 'frontend/libs/bootstrap-4.0.0/js/bootstrap.bundle.min.js' %}"></script>
+
+<!-- Custom JavaScript -->
+<script>
+{% block javascript %}{% endblock %}
+</script>
 
 </body>
 </html>

@@ -114,13 +114,17 @@
 
                 {% if tournament.state == 'open' %}
 
-                    {% if not tournament|is_joined_by:user %}
+                    {% if tournament|is_joined_by:user %}
+
+                        <a class="btn btn-success {{ button_classes }}" href="{% url 'withdraw-tournament' pk=tournament.id %}" role="button"><i class="bi bi-check-lg"></i> Joined</a>
+
+                    {% elif user.id %}
 
                         <a class="btn btn-outline-success {{ button_classes }}" href="{% url 'join-tournament' pk=tournament.id %}" role="button">Join</a>
 
                     {% else %}
 
-                        <a class="btn btn-success {{ button_classes }}" href="{% url 'withdraw-tournament' pk=tournament.id %}" role="button"><i class="bi bi-check-lg"></i> Joined</a>
+                        <p><a href="{% url 'login' %}">Login to join.</a></p>
 
                     {% endif %}
 

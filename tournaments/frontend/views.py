@@ -50,7 +50,7 @@ class IndexView(VersionInfoMixin, ListView):
             fixtures = Count('stages__fixtures'),
             podium_size = Count('participations', filter = Q(participations__podium_position__isnull = False)))
 
-        context['drafts']   = self.queryset.filter(published = False, creator = self.request.user)
+        context['drafts']   = self.queryset.filter(published = False, creator = self.request.user) if self.request.user.id else list()
         context['open']     = published_tournaments.filter(fixtures = 0)
         context['active']   = published_tournaments.filter(fixtures__gte = 1, podium_size = 0)
         context['finished'] = published_tournaments.filter(podium_size__gte = 1)
