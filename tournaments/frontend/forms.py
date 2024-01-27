@@ -19,6 +19,7 @@ class CreateTournamentForm(forms.Form):
             for stage in tournament.stages.all():
                 stage.full_clean()
         except ValidationError as error:
+            print(error)
             raise ValidationError(' '.join((str(err) for err in error.messages)))
         except KeyError as error:
             raise ValidationError(f'Missing key: "{error.args[0]}".')

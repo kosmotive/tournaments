@@ -26,6 +26,9 @@ class Tournament(models.Model):
             definition = yaml.safe_load(definition)
 
         assert isinstance(definition, dict), repr(definition)
+        if len(definition['podium']) == 0:
+            raise ValidationError('No podium definition given.')
+
         tournament = Tournament.objects.create(name = name, podium_spec = definition['podium'], creator = creator)
 
         for stage in definition['stages']:
@@ -105,6 +108,17 @@ class Tournament(models.Model):
                 podium.append(podium_chunk)
         return podium
 
+    def clean(self):
+        super(Tournament, self).clean()
+        try:
+            for identifier, placements_slice in parse_participants_str_list(self.podium_spec):
+                try:
+                    unwrap_list(self.stages.get(identifier = identifier))
+                except Mode.DoesNotExist:
+                    raise ValueError(f'stage "{identifier}" does not exist')
+        except Exception as error:
+            raise ValidationError(f'Error parsing "podium" definition ({error}).')
+
 
 class Participation(models.Model):
 
@@ -130,16 +144,19 @@ def parse_participants_str_list(participants_str_list):
     return [parse_placements_str(participants_str) for participants_str in participants_str_list]
 
 
-def parse_placements_str(played_by):
-    m = re.match(r'^([a-zA-Z_0-9]+)\.placements\[([-0-9:]+)\]$', played_by)
-    identifier = m.group(1)
-    slice_str = m.group(2)
-    parts = slice_str.split(':')
-    parts = [int(part) if len(part) > 0 else None for part in parts]
-    assert 1 <= len(parts) <= 3, slice_str
-    if len(parts) == 1: parts = parts + [parts[0] + 1]
-    placements_slice = slice(*parts)
-    return identifier, placements_slice
+def parse_placements_str(placement_str):
+    try:
+        m = re.match(r'^([a-zA-Z_0-9]+)\.placements\[([-0-9:]+)\]$', placement_str)
+        identifier = m.group(1)
+        slice_str = m.group(2)
+        parts = slice_str.split(':')
+        parts = [int(part) if len(part) > 0 else None for part in parts]
+        assert 1 <= len(parts) <= 3, slice_str
+        if len(parts) == 1: parts = parts + [parts[0] + 1]
+        placements_slice = slice(*parts)
+        return identifier, placements_slice
+    except Exception as error:
+        raise ValueError(f'cannot parse placement: "{placement_str}"')
 
 
 def unwrap_list(items):
@@ -155,6 +172,17 @@ class Mode(PolymorphicModel):
     name = models.CharField(max_length = 100)
     tournament = models.ForeignKey('Tournament', on_delete = models.CASCADE, related_name = 'stages')
     played_by  = models.JSONField(default = list, blank = True)
+
+    def clean(self):
+        super(Mode, self).clean()
+        try:
+            for identifier, placements_slice in parse_participants_str_list(self.played_by):
+                try:
+                    unwrap_list(self.tournament.stages.get(identifier = identifier))
+                except Mode.DoesNotExist:
+                    raise ValueError(f'stage "{identifier}" does not exist')
+        except Exception as error:
+            raise ValidationError(f'Error parsing "played_by" definition of "{self.identifier}" stage ({error}).')
 
     def create_fixtures(self, participants):
         raise NotImplementedError()

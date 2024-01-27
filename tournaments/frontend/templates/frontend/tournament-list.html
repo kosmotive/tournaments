@@ -6,7 +6,7 @@
     {% if not tournament.published %}
 
         {% capture silent %}
-            <a class="btn btn-primary" href="{% url 'update-tournament' pk=tournament.id %}" role="button"><i class="bi bi-pencil-square"></i> Edit</a>
+            <a class="btn btn-primary" href="{% url 'update-tournament' pk=tournament.id %}" role="button"><i class="bi bi-gear-fill"></i> Edit</a>
         {% endcapture %}
         {% include "frontend/tournament-details.html" with tournament=tournament buttons=capture %}
 
