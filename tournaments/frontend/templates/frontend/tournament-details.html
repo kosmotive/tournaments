@@ -116,21 +116,21 @@
 
                     {% if not tournament|is_joined_by:user %}
 
-                        <a class="btn btn-outline-success" href="{% url 'join-tournament' pk=tournament.id %}" role="button">Attend</a>
+                        <a class="btn btn-outline-success {{ button_classes }}" href="{% url 'join-tournament' pk=tournament.id %}" role="button">Join</a>
 
                     {% else %}
 
-                        <a class="btn btn-success" href="{% url 'withdraw-tournament' pk=tournament.id %}" role="button"><i class="bi bi-check-lg"></i> Attended</a>
+                        <a class="btn btn-success {{ button_classes }}" href="{% url 'withdraw-tournament' pk=tournament.id %}" role="button"><i class="bi bi-check-lg"></i> Joined</a>
 
                     {% endif %}
 
                     {% if tournament.creator == user %}
 
-                        <a class="btn btn-secondary" href="{% url 'draft-tournament' pk=tournament.id %}" role="button"><i class="bi bi-eye-fill"></i> Published</a>
+                        <a class="btn btn-secondary {{ button_classes }}" href="{% url 'draft-tournament' pk=tournament.id %}" role="button"><i class="bi bi-eye-fill"></i> Published</a>
 
-                        {% if tournament.participations.length >= 3 %}
+                        {% if tournament.participations.count >= 3 %}
 
-                            <a class="btn btn-warning" href="{% url 'update-tournament' pk=tournament.id %}" role="button"><i class="bi bi-play-fill"></i> Start</a>
+                            <a class="btn btn-warning {{ button_classes }}" href="{% url 'update-tournament' pk=tournament.id %}" role="button"><i class="bi bi-play-fill"></i> Start</a>
 
                         {% endif %}
 
@@ -138,7 +138,7 @@
 
                 {% else %}
 
-                    <a class="btn btn-primary" href="{% url 'update-tournament' pk=tournament.id %}" role="button"><i class="bi bi-table"></i> Details</a>
+                    <a class="btn btn-primary {{ button_classes }}" href="{% url 'update-tournament' pk=tournament.id %}" role="button"><i class="bi bi-table"></i> Details</a>
 
                 {% endif %}
 

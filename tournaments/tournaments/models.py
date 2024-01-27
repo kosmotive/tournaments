@@ -58,7 +58,7 @@ class Tournament(models.Model):
 
     @property
     def participants(self):
-        return User.objects.filter(participations__tournament = self)
+        return User.objects.filter(participations__tournament = self).order_by('participations__slot_id')
 
     @property
     def current_stage(self):
@@ -125,11 +125,11 @@ class Participation(models.Model):
     user = models.ForeignKey('auth.User', on_delete = models.PROTECT, related_name = 'participations')
     tournament = models.ForeignKey('Tournament', on_delete = models.CASCADE, related_name = 'participations')
     slot_id = models.PositiveIntegerField()
-    podium_position = models.PositiveIntegerField(null = True)
+    podium_position = models.PositiveIntegerField(null = True, blank = True)
 
     @staticmethod
     def next_slot_id(tournament):
-        return Participation.objects.filter(tournament = tournament).count() + 1
+        return Participation.objects.filter(tournament = tournament).aggregate(Max('slot_id', default = -1))['slot_id__max'] + 1
 
     class Meta:
         ordering = ('tournament', 'slot_id')
