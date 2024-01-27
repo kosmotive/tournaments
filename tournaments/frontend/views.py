@@ -141,3 +141,28 @@ class DeleteTournamentView(IsCreatorMixin, SingleObjectMixin, View):
         self.object.stages.non_polymorphic().all().delete()
         self.object.delete()
         return redirect('index')
+
+
+class JoinTournamentView(LoginRequiredMixin, SingleObjectMixin, View):
+
+    model = models.Tournament
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        if self.object.state == 'open':
+            models.Participation.objects.create(
+                tournament = self.object,
+                user = self.request.user,
+                slot_id = models.Participation.next_slot_id(self.object))
+        return redirect('update-tournament', pk = self.object.id)
+
+
+class WithdrawTournamentView(LoginRequiredMixin, SingleObjectMixin, View):
+
+    model = models.Tournament
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        if self.object.state == 'open':
+            models.Participation.objects.filter(user = request.user).delete()
+        return redirect('update-tournament', pk = self.object.id)

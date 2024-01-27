@@ -96,13 +96,25 @@
 
                 {% if tournament.state == 'open' %}
 
-                    <a class="btn btn-primary" href="{% url 'update-tournament' pk=tournament.id %}" role="button"><i class="bi bi-check-lg"></i> Join</a>
+                    {% if not tournament|is_joined_by:user %}
+
+                        <a class="btn btn-success" href="{% url 'join-tournament' pk=tournament.id %}" role="button"><i class="bi bi-check-lg"></i> Attend</a>
+
+                    {% else %}
+
+                        <a class="btn btn-danger" href="{% url 'withdraw-tournament' pk=tournament.id %}" role="button"><i class="bi bi-door-open-fill"></i> Withdraw</a>
+
+                    {% endif %}
 
                     {% if tournament.creator == user %}
 
                         <a class="btn btn-secondary" href="{% url 'draft-tournament' pk=tournament.id %}" role="button"><i class="bi bi-eye-slash-fill"></i> Draft</a>
 
-                        <a class="btn btn-warning" href="{% url 'update-tournament' pk=tournament.id %}" role="button"><i class="bi bi-play-fill"></i> Start</a>
+                        {% if tournament.participations.length >= 3 %}
+
+                            <a class="btn btn-warning" href="{% url 'update-tournament' pk=tournament.id %}" role="button"><i class="bi bi-play-fill"></i> Start</a>
+
+                        {% endif %}
 
                     {% endif %}
 

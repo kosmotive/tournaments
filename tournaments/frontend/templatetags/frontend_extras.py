@@ -41,3 +41,8 @@ def parse_participants(participants_str_list, tournament):
             stage_name = f'Tournament Stage {stage_position + 1}'
         participants.append(f'{which} of {stage_name}')
     return participants
+
+
+@register.filter
+def is_joined_by(tournament, user):
+    return tournament.participations.filter(user = user).count() > 0
