@@ -120,6 +120,18 @@ class PublishTournamentView(IsCreatorMixin, SingleObjectMixin, View):
         return redirect('update-tournament', pk = self.object.id)
 
 
+class DraftTournamentView(IsCreatorMixin, SingleObjectMixin, View):
+
+    model = models.Tournament
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        self.object.published = False
+        self.object.participations.all().delete()
+        self.object.save()
+        return redirect('update-tournament', pk = self.object.id)
+
+
 class DeleteTournamentView(IsCreatorMixin, SingleObjectMixin, View):
 
     model = models.Tournament

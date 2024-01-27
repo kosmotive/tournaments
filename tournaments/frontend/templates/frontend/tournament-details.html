@@ -100,6 +100,8 @@
 
                     {% if tournament.creator == user %}
 
+                        <a class="btn btn-secondary" href="{% url 'draft-tournament' pk=tournament.id %}" role="button"><i class="bi bi-eye-slash-fill"></i> Draft</a>
+
                         <a class="btn btn-warning" href="{% url 'update-tournament' pk=tournament.id %}" role="button"><i class="bi bi-play-fill"></i> Start</a>
 
                     {% endif %}
