@@ -23,7 +23,7 @@
 
     {% capture silent %}
     <a class="btn btn-danger" href="{% url 'delete-tournament' pk=object.id %}" role="button"><i class="bi bi-trash3-fill"></i> Delete</a>
-    <a class="btn btn-success" href="{% url 'publish-tournament' pk=object.id %}" role="button"><i class="bi bi-eye-fill"></i> Publish</a>
+    <a class="btn btn-outline-success" href="{% url 'publish-tournament' pk=object.id %}" role="button">Publish</a>
     {% endcapture %}
 
     {% include "frontend/tournament-details.html" with tournament=object buttons=capture %}

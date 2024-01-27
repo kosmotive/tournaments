@@ -26,9 +26,11 @@ def create_breadcrumb(items):
 
 class VersionInfoMixin:
 
+    version = get_head_info()
+
     def get_context_data(self, **kwargs):
         context = super(VersionInfoMixin, self).get_context_data(**kwargs)
-        context['version'] = get_head_info()
+        context['version'] = self.version
         return context
 
 

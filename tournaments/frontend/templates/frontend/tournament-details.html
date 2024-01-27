@@ -4,8 +4,26 @@
 <div class="tournament-details card bg-light">
 <div class="card-body">
 
-    <h4 class="card-title">{{ tournament.name }}</h4>
+    <h4 class="card-title">
+        {{ tournament.name }}
+        {% if tournament.participants %}
+            <span class="badge badge-secondary">{{ tournament.participants.count }} attendee{% if tournament.participants.count > 1 %}s{% endif %}</span>
+        {% endif %}
+    </h4>
     <h6 class="card-subtitle mb-2 text-muted">Created by {{ tournament.creator }}</h6>
+
+    {% if tournament.participants %}
+
+        <p class="card-text"><small>
+        <span class="text-muted">Attendees:</span>
+        {% for participant in tournament.participants %}
+
+            <span class="d-inline-block"><i class="bi bi-person"></i> {{ participant }}</span>
+
+        {% endfor %}
+        </small></p>
+
+    {% endif %}
     
     <ul class="list-group list-group-flush">
     
@@ -98,17 +116,17 @@
 
                     {% if not tournament|is_joined_by:user %}
 
-                        <a class="btn btn-success" href="{% url 'join-tournament' pk=tournament.id %}" role="button"><i class="bi bi-check-lg"></i> Attend</a>
+                        <a class="btn btn-outline-success" href="{% url 'join-tournament' pk=tournament.id %}" role="button">Attend</a>
 
                     {% else %}
 
-                        <a class="btn btn-danger" href="{% url 'withdraw-tournament' pk=tournament.id %}" role="button"><i class="bi bi-door-open-fill"></i> Withdraw</a>
+                        <a class="btn btn-success" href="{% url 'withdraw-tournament' pk=tournament.id %}" role="button"><i class="bi bi-check-lg"></i> Attended</a>
 
                     {% endif %}
 
                     {% if tournament.creator == user %}
 
-                        <a class="btn btn-secondary" href="{% url 'draft-tournament' pk=tournament.id %}" role="button"><i class="bi bi-eye-slash-fill"></i> Draft</a>
+                        <a class="btn btn-secondary" href="{% url 'draft-tournament' pk=tournament.id %}" role="button"><i class="bi bi-eye-fill"></i> Published</a>
 
                         {% if tournament.participations.length >= 3 %}
 
