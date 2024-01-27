@@ -1,0 +1,30 @@
+{% extends "frontend/base.html" %}
+
+{% load crispy_forms_tags %}
+
+{% block title %}sign up{% endblock %}
+
+{% block header %}
+
+<h1>Sign up</h1>
+
+{% endblock %}
+
+{% block account-buttons %}{% endblock %}
+
+{% block content %}
+
+{% if form.errors %}
+<div class="alert alert-danger" role="alert">
+    Your username and password didn't match. Please try again.
+</div>
+{% endif %}
+
+<form method="post">
+    {% csrf_token %}
+    {{ form|crispy }}
+    <button class="btn btn-primary" type="submit">Sign up</button>
+    <a class="btn btn-light" href="{% url 'login' %}" role="button">Login instead</a>    
+</form>
+
+{% endblock %}

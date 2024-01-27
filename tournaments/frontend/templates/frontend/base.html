@@ -57,7 +57,10 @@
 
                 {% else %}
 
+                    {% block account-buttons %}
                     <a class="btn btn-light" href="{% url 'login' %}" role="button"><i class="bi bi-door-open"></i> Login</a>
+                    <a class="btn btn-light" href="{% url 'signup' %}" role="button">Sign up</a>
+                    {% endblock %}
 
                 {% endif %}
 

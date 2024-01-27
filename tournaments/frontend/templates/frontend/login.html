@@ -8,6 +8,8 @@
 
 {% endblock %}
 
+{% block account-buttons %}{% endblock %}
+
 {% block content %}
 
 {% if form.errors %}
@@ -27,6 +29,7 @@
         {{ form.password }}
     </div>
     <button class="btn btn-primary" type="submit">Login</button>
+    <a class="btn btn-light" href="{% url 'signup' %}" role="button">Sign up instead</a>    
 </form>
 
 {% endblock %}

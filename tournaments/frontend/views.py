@@ -1,10 +1,12 @@
+from django.contrib.auth import login, authenticate
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Count, Q
 from django.views.generic import DeleteView, ListView, View
 from django.views.generic.detail import SingleObjectMixin
 from django.views.generic.edit import FormView
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 from django.urls import reverse
 
 from tournaments import models
@@ -32,6 +34,25 @@ class VersionInfoMixin:
         context = super(VersionInfoMixin, self).get_context_data(**kwargs)
         context['version'] = self.version
         return context
+
+
+class SignupView(VersionInfoMixin, View):
+
+    def get(self, request, *args, **kwargs):
+        form = UserCreationForm()
+        return render(request, 'frontend/signup.html', dict(form = form))
+
+    def post(self, request, *args, **kwargs):
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            form.save()
+            username = form.cleaned_data.get('username')
+            password = form.cleaned_data.get('password1')
+            user = authenticate(username=username, password=password)
+            login(request, user)
+            return redirect('index')
+        else:
+            return render(request, 'frontend/signup.html', dict(form = form))
 
 
 class IndexView(VersionInfoMixin, ListView):
