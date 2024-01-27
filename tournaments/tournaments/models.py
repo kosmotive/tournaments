@@ -14,10 +14,10 @@ import numpy as np
 class Tournament(models.Model):
 
     name = models.CharField(blank = False, max_length = 100)
-    definition = models.TextField(null = True)
+    definition = models.TextField(null = True, blank = True)
     podium_spec = models.JSONField()
     published = models.BooleanField(default = False)
-    creator = models.ForeignKey('auth.User', on_delete = models.SET_NULL, related_name = 'tournaments', null = True)
+    creator = models.ForeignKey('auth.User', on_delete = models.SET_NULL, related_name = 'tournaments', null = True, blank = True)
 
     @staticmethod
     def load(definition, name, creator = None):
@@ -49,7 +49,7 @@ class Tournament(models.Model):
                 mode = Groups.objects.create(**stage)
 
             else:
-                raise ValidationError(f'Unknown mode: "{mode_type}"')
+                raise ValidationError(f'Unknown mode: "{mode_type}".')
 
         return tournament
 
@@ -154,7 +154,7 @@ class Mode(PolymorphicModel):
     identifier = models.SlugField()
     name = models.CharField(max_length = 100)
     tournament = models.ForeignKey('Tournament', on_delete = models.CASCADE, related_name = 'stages')
-    played_by  = models.JSONField(default = list)
+    played_by  = models.JSONField(default = list, blank = True)
 
     def create_fixtures(self, participants):
         raise NotImplementedError()
@@ -299,7 +299,7 @@ class Groups(Mode):
     min_group_size = models.PositiveSmallIntegerField()
     max_group_size = models.PositiveSmallIntegerField()
     with_returns   = models.BooleanField(default = False)
-    groups_info    = models.JSONField(null = True)
+    groups_info    = models.JSONField(null = True, blank = True)
 
     def create_fixtures(self, participants):
         assert len(participants) >= 2
@@ -353,6 +353,11 @@ class Groups(Mode):
 class Knockout(Mode):
 
     double_elimination = models.BooleanField(default = False)
+
+    def clean(self):
+        super(Knockout, self).clean()
+        if self.double_elimination:
+            raise ValidationError('Double elimination is not implemented yet.')
 
     def create_fixtures(self, participants):
         assert len(participants) >= 2
@@ -413,7 +418,7 @@ class Knockout(Mode):
 
     def check_fixture(self, fixture):
         if fixture.score1 is not None and fixture.score2 is not None and fixture.score1 == fixture.score2:
-            raise ValidationError('Draws are not allowed in knockout mode')
+            raise ValidationError('Draws are not allowed in knockout mode.')
 
     @property
     def placements(self):

@@ -13,7 +13,17 @@ class CreateTournamentForm(forms.Form):
 
     @transaction.atomic
     def validate_definition(self, definition):
-        models.Tournament.load(definition = definition, name = 'Test')
+        try:
+            tournament = models.Tournament.load(definition = definition, name = 'Test')
+            tournament.full_clean()
+            for stage in tournament.stages.all():
+                stage.full_clean()
+        except ValidationError as error:
+            raise ValidationError(' '.join((str(err) for err in error.messages)))
+        except KeyError as error:
+            raise ValidationError(f'Missing key: "{error.args[0]}".')
+        except Exception as error:
+            raise ValidationError(error)
         transaction.set_rollback(True)
 
     def clean_definition(self):
