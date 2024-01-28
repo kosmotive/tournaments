@@ -1,5 +1,6 @@
 {% extends "frontend/base.html" %}
 
+{% load frontend_extras %}
 {% load crispy_forms_tags %}
 {% load capture_tags %}
 
@@ -18,12 +19,66 @@
     <div class="col-4">
 
         {% capture silent %}
-            <a class="btn btn-danger btn-sm" href="{% url 'active-tournament' pk=object.id %}" role="button"><i class="bi bi-door-open"></i> Abandon</a>
+            <a class="btn btn-danger btn-sm" href="{% url 'active-tournament' pk=tournament.id %}" role="button"><i class="bi bi-door-open"></i> Abandon</a>
         {% endcapture %}
-        {% include "frontend/tournament-details.html" with tournament=object buttons=capture %}
+        {% include "frontend/tournament-details.html" with tournament=tournament buttons=capture %}
 
     </div>
     <div class="col-8">
+
+        {% for stage in tournament.stages.all %}
+
+            {% if forloop.counter < current_stage %}
+
+                <h2>{{ stage | stage_name:forloop.counter }}</h2>
+
+            {% endif %}
+
+            {% if forloop.counter == current_stage %}
+
+                <h2>{{ stage | stage_name:forloop.counter }} <small class="text-muted">Current Stage</small></h2>
+
+            {% endif %}
+
+            {% if forloop.counter <= current_stage %}
+
+                {% with stage_info=stages|get_item:stage.id %}
+
+                    {% for level in stage_info.levels %}
+
+                        <div class="p-2 mb-3 {% if forloop.counter == stage.current_level|add:1 %}border rounded{% else %}text-muted{% endif %}">
+
+                            <p class="lead">Matchday {{ forloop.counter }}</p>
+
+                            {% for fixture in level %}
+
+                                <div class="fixture row bg-light rounded mx-0 mt-2">
+
+                                    <div class="col-4 text-left"><strong><i class="bi bi-person"></i> {{ fixture.player1 }}</strong></div>
+                                    <div class="col-1 text-left">XX</div>
+                                    <div class="col-2 text-center">:</div>
+                                    <div class="col-1 text-right">XX</div>
+                                    <div class="col-4 text-right"><strong><i class="bi bi-person"></i> {{ fixture.player2 }}</strong></div>
+
+                                </div>
+
+                            {% endfor %}
+
+                        </div>
+
+                    {% endfor %}
+
+                {% endwith %}
+
+                {% if forloop.counter < forloop.last %}
+
+                    <hr>
+
+                {% endif %}
+
+            {% endif %}
+
+        {% endfor %}
 
     </div>
 

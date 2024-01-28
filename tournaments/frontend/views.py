@@ -32,7 +32,10 @@ class VersionInfoMixin:
     version = get_head_info()
 
     def get_context_data(self, **kwargs):
-        context = super(VersionInfoMixin, self).get_context_data(**kwargs)
+        if hasattr(super(VersionInfoMixin, self), 'get_context_data'):
+            context = super(VersionInfoMixin, self).get_context_data(**kwargs)
+        else:
+            context = dict()
         context['version'] = self.version
         return context
 
@@ -50,8 +53,9 @@ class AlertMixin:
 class SignupView(VersionInfoMixin, View):
 
     def get(self, request, *args, **kwargs):
-        form = UserCreationForm()
-        return render(request, 'frontend/signup.html', dict(form = form))
+        context = self.get_context_data(**kwargs)
+        context['form'] = UserCreationForm()
+        return render(request, 'frontend/signup.html', context)
 
     def post(self, request, *args, **kwargs):
         form = UserCreationForm(request.POST)
@@ -230,6 +234,25 @@ class ActiveTournamentView(LoginRequiredMixin, SingleObjectMixin, VersionInfoMix
 
         if self.object.state == 'active':
             return render(request, 'frontend/active-tournament.html', self.get_context_data())
+
+    def get_context_data(self, **kwargs):
+        context = super(ActiveTournamentView, self).get_context_data(**kwargs)
+        context.update(VersionInfoMixin.get_context_data(self, **kwargs))
+        context['breadcrumb'] = create_breadcrumb([
+            dict(label = 'Index', url = reverse('index')),
+            dict(label = self.object.name, url = self.request.path),
+        ])
+
+        context['stages'] = dict()
+        for stage_idx, stage in enumerate(self.object.stages.all()):
+            context['stages'][stage.id] = dict(
+                levels = [stage.fixtures.filter(level = level) for level in range(stage.levels)]
+            )
+
+            if stage.id == self.object.current_stage.id:
+                context['current_stage'] = stage_idx + 1
+
+        return context
 
     def post(self, request, *args, **kwargs):
         pass

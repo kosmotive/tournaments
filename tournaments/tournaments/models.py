@@ -226,7 +226,7 @@ def unwrap_list(items):
 class Mode(PolymorphicModel):
 
     identifier = models.SlugField()
-    name = models.CharField(max_length = 100)
+    name = models.CharField(max_length = 100, blank = True)
     tournament = models.ForeignKey('Tournament', on_delete = models.CASCADE, related_name = 'stages')
     played_by  = models.JSONField(default = list, blank = True)
 
@@ -530,6 +530,7 @@ class Fixture(models.Model):
     confirmations = models.ManyToManyField('auth.User', related_name = 'fixture_confirmations')
 
     class Meta:
+        ordering = ('mode', 'level', 'position')
         constraints = [
                 CheckConstraint(
                     check = (Q(score1__isnull = True) & Q(score2__isnull = True)) | (Q(score1__isnull = False) & Q(score2__isnull = False)),

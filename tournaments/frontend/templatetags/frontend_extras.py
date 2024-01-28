@@ -41,3 +41,13 @@ def parse_participants(participants_str_list, tournament):
 @register.filter
 def is_joined_by(tournament, user):
     return user.id is not None and tournament.participations.filter(user = user).count() > 0
+
+
+@register.filter
+def stage_name(stage, number):
+    return stage.name if stage.name else f'Stage {number}'
+
+
+@register.filter
+def get_item(dictionary, key):
+    return dictionary.get(key)

@@ -30,11 +30,7 @@
         {% for stage in tournament.stages.all %}
         <li class="list-group-item"><small>
 
-            {% if stage.name %}
-                {% capture as stage_name silent %}{{ stage.name }}{% endcapture %}
-            {% else %}
-                {% capture as stage_name silent %}Stage {{ forloop.counter }}{% endcapture %}
-            {% endif %}
+            {% capture as stage_name silent %}{{ stage | stage_name:forloop.counter }}{% endcapture %}
         
             {% with stage_type=stage|get_type %}
                 {% if stage_type == 'Groups' %}
