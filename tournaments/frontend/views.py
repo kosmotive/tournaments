@@ -173,7 +173,6 @@ class DeleteTournamentView(IsCreatorMixin, SingleObjectMixin, View):
 
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
-        self.object.stages.non_polymorphic().all().delete()
         self.object.delete()
         return redirect('index')
 

@@ -954,6 +954,10 @@ class TournamentTest(TestCase):
         self.assertEqual(actual_stages, expected_stages)
         return tournament
 
+    def test_delete(self):
+        tournament = self.test_load_tournament1()
+        tournament.delete()
+
     def test_current_stage(self):
         tournament = self.test_load_tournament1()
         self.assertEqual(tournament.current_stage.id, tournament.stages.all()[0].id)

@@ -5,6 +5,8 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import CheckConstraint, Q, Max
+from django.db.models.signals import pre_delete
+from django.dispatch import receiver
 
 from polymorphic.models import PolymorphicModel
 
@@ -118,6 +120,11 @@ class Tournament(models.Model):
                     raise ValueError(f'stage "{identifier}" does not exist')
         except Exception as error:
             raise ValidationError(f'Error parsing "podium" definition ({error}).')
+
+
+@receiver(pre_delete, sender=Tournament)
+def delete_tournament_stages(sender, instance, **kwargs):
+    instance.stages.non_polymorphic().all().delete()
 
 
 class Participation(models.Model):
