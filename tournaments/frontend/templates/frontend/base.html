@@ -67,6 +67,12 @@
             </div>
         </div>
     </div>
+
+    {% if alert %}
+    <div class="alert alert-{{ alert.status }}" role="alert">
+        {{ alert.text }}
+    </div>
+    {% endif %}
     
     <div id="content">
         {% block content %}{% endblock %}
