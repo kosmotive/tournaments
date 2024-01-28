@@ -4,6 +4,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
+from django.http import HttpResponseForbidden, HttpResponse
 from django.views.generic import DeleteView, ListView, View
 from django.views.generic.detail import SingleObjectMixin
 from django.views.generic.edit import FormView
@@ -43,7 +44,10 @@ class VersionInfoMixin:
 class AlertMixin:
 
     def get_context_data(self, **kwargs):
-        context = super(AlertMixin, self).get_context_data(**kwargs)
+        if hasattr(super(AlertMixin, self), 'get_context_data'):
+            context = super(AlertMixin, self).get_context_data(**kwargs)
+        else:
+            context = dict()
         if 'alert' in self.request.session:
             context['alert'] = self.request.session['alert']
             del self.request.session['alert']
@@ -215,13 +219,17 @@ class WithdrawTournamentView(LoginRequiredMixin, SingleObjectMixin, View):
         return redirect('update-tournament', pk = self.object.id)
 
 
-class ActiveTournamentView(LoginRequiredMixin, SingleObjectMixin, VersionInfoMixin, View):
+class ActiveTournamentView(SingleObjectMixin, VersionInfoMixin, AlertMixin, View):
 
     model = models.Tournament
 
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
         if self.object.state == 'open':
+
+            # Check whether there are at least 3 participants.
+            if self.object.participations.count() < 3:
+                return HttpResponse(status = 412)
 
             try:
                 self.object.test()
@@ -235,6 +243,13 @@ class ActiveTournamentView(LoginRequiredMixin, SingleObjectMixin, VersionInfoMix
         if self.object.state == 'active':
             return render(request, 'frontend/active-tournament.html', self.get_context_data())
 
+    def get_fixture_data(self, stage, level, fixture):
+        return {
+            'data': fixture,
+            'editable': not fixture.is_confirmed and level == stage.current_level and self.request.user.id and stage.tournament.participations.filter(user = self.request.user).count() > 0,
+            'has_confirmed': fixture.confirmations.filter(id = self.request.user.id).count() > 0,
+        }
+
     def get_context_data(self, **kwargs):
         context = super(ActiveTournamentView, self).get_context_data(**kwargs)
         context.update(VersionInfoMixin.get_context_data(self, **kwargs))
@@ -246,7 +261,7 @@ class ActiveTournamentView(LoginRequiredMixin, SingleObjectMixin, VersionInfoMix
         context['stages'] = dict()
         for stage_idx, stage in enumerate(self.object.stages.all()):
             context['stages'][stage.id] = dict(
-                levels = [stage.fixtures.filter(level = level) for level in range(stage.levels)]
+                levels = [[self.get_fixture_data(stage, level, fixture) for fixture in stage.fixtures.filter(level = level)] for level in range(stage.levels)]
             )
 
             if stage.id == self.object.current_stage.id:
@@ -255,4 +270,57 @@ class ActiveTournamentView(LoginRequiredMixin, SingleObjectMixin, VersionInfoMix
         return context
 
     def post(self, request, *args, **kwargs):
-        pass
+        self.object = self.get_object()
+        fixture = models.Fixture.objects.get(id = request.POST.get('fixture_id'))
+
+        # Check whether the user is a participator.
+        if not request.user.id or self.object.participations.filter(user = request.user).count() == 0:
+            return HttpResponseForbidden() 
+
+        # Check whether the tournament is active.
+        if self.object.state != 'active':
+            return HttpResponse(status = 412)
+
+        # Check whether the fixture belongs to the currently active stage.
+        if fixture.mode.id != self.object.current_stage.id:
+            return HttpResponse(status = 412)
+
+        # Check whether the fixture belongs to the current level.
+        if fixture.level != self.object.current_stage.current_level:
+            return HttpResponse(status = 412)
+
+        # Check the score formatting.
+        try:
+            new_score = (int(request.POST.get('score1').strip()), int(request.POST.get('score2').strip()))
+        except ValueError:
+            request.session['alert'] = dict(status = 'danger', text = 'You have not entered a valid score.')
+            return redirect('active-tournament', pk = self.object.id)
+
+        # Update the fixture.
+        if fixture.score != new_score:
+
+            # The score of an already fully confirmed fixture cannot be changed.
+            if fixture.is_confirmed:
+                return HttpResponse(status = 412)
+
+            fixture.score = new_score
+
+            try:
+                fixture.full_clean()
+            except ValidationError as error:
+                request.session['alert'] = dict(status = 'danger', text = error)
+                return redirect('active-tournament', pk = self.object.id)
+
+            fixture.save()
+            fixture.confirmations.clear()
+
+        # Add a confirmation.
+        if fixture.confirmations.filter(id = request.user.id).count() == 0:
+            fixture.confirmations.add(request.user)
+
+        request.session['alert'] = dict(status = 'success', text = 'Your confirmation has been saved.')
+        return redirect('active-tournament', pk = self.object.id)
+
+        # Update the state of the tournament as soon as the fixture is fully confirmed.
+        if fixture.is_confirmed:
+            self.object.update_state()
