@@ -23,16 +23,12 @@ def position_to_str(pos):
         return f'{pos}th'
 
 
-def slice_to_str(sl):
-    return ', '.join((f'{position_to_str(item + 1)}' for item in range(sl.stop)[sl]))
-
-
 @register.filter
 def parse_participants(participants_str_list, tournament):
     participants = list()
-    for identifier, placements_slice in parse_participants_str_list(participants_str_list):
+    for identifier, position in parse_participants_str_list(participants_str_list):
         stage = tournament.stages.get(identifier = identifier)
-        which = slice_to_str(placements_slice)
+        which = position_to_str(position + 1)
         if stage.name:
             stage_name = stage.name
         else:

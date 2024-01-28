@@ -36,6 +36,16 @@ class VersionInfoMixin:
         return context
 
 
+class AlertMixin:
+
+    def get_context_data(self, **kwargs):
+        context = super(AlertMixin, self).get_context_data(**kwargs)
+        if 'alert' in self.request.session:
+            context['alert'] = self.request.session['alert']
+            del self.request.session['alert']
+        return context
+
+
 class SignupView(VersionInfoMixin, View):
 
     def get(self, request, *args, **kwargs):
@@ -97,7 +107,7 @@ class CreateTournamentView(LoginRequiredMixin, VersionInfoMixin, FormView):
         return context
 
 
-class UpdateTournamentView(IsCreatorMixin, SingleObjectMixin, VersionInfoMixin, FormView):
+class UpdateTournamentView(IsCreatorMixin, SingleObjectMixin, VersionInfoMixin, AlertMixin, FormView):
 
     form_class = UpdateTournamentForm
     template_name = 'frontend/update-tournament.html'
@@ -140,6 +150,7 @@ class PublishTournamentView(IsCreatorMixin, SingleObjectMixin, View):
         self.object = self.get_object()
         self.object.published = True
         self.object.save()
+        request.session['alert'] = dict(status = 'success', text = 'The tournament is now open and can be joined by you and others.')
         return redirect('update-tournament', pk = self.object.id)
 
 
@@ -152,6 +163,7 @@ class DraftTournamentView(IsCreatorMixin, SingleObjectMixin, View):
         self.object.published = False
         self.object.participations.all().delete()
         self.object.save()
+        request.session['alert'] = dict(status = 'warning', text = 'The tournament is now in draft mode and cannot be joined.')
         return redirect('update-tournament', pk = self.object.id)
 
 
@@ -161,7 +173,6 @@ class DeleteTournamentView(IsCreatorMixin, SingleObjectMixin, View):
 
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
-        self.object.stages.non_polymorphic().all().delete()
         self.object.delete()
         return redirect('index')
 
@@ -177,6 +188,7 @@ class JoinTournamentView(LoginRequiredMixin, SingleObjectMixin, View):
                 tournament = self.object,
                 user = self.request.user,
                 slot_id = models.Participation.next_slot_id(self.object))
+            request.session['alert'] = dict(status = 'success', text = 'You have joined the tournament.')
         return redirect('update-tournament', pk = self.object.id)
 
 
@@ -188,6 +200,7 @@ class WithdrawTournamentView(LoginRequiredMixin, SingleObjectMixin, View):
         self.object = self.get_object()
         if self.object.state == 'open':
             models.Participation.objects.filter(user = request.user).delete()
+            request.session['alert'] = dict(status = 'success', text = 'You have withdrawn from the tournament.')
         return redirect('update-tournament', pk = self.object.id)
 
 
