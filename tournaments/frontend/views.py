@@ -189,3 +189,18 @@ class WithdrawTournamentView(LoginRequiredMixin, SingleObjectMixin, View):
         if self.object.state == 'open':
             models.Participation.objects.filter(user = request.user).delete()
         return redirect('update-tournament', pk = self.object.id)
+
+
+class ActiveTournamentView(LoginRequiredMixin, SingleObjectMixin, VersionInfoMixin, View):
+
+    model = models.Tournament
+
+    def get(self, request, *args, **kwargs):
+        self.tournament = self.get_object()
+        if self.tournament.state == 'open':
+            self.tournament.test()
+            # TODO: catch errors
+            # - IntegrityError (content irrelevant to end-user)
+
+    def post(self, request, *args, **kwargs):
+        pass

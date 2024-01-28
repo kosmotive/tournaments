@@ -3,7 +3,7 @@ import re
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 from django.db.models import CheckConstraint, Q, Max
 
 from polymorphic.models import PolymorphicModel
@@ -118,6 +118,31 @@ class Tournament(models.Model):
                     raise ValueError(f'stage "{identifier}" does not exist')
         except Exception as error:
             raise ValidationError(f'Error parsing "podium" definition ({error}).')
+
+    @transaction.atomic
+    def test(self):
+        tournament = Tournament.load(definition = self.definition, name = 'Test')
+        for participant in (User.objects.create(username = f'testuser-{pidx}', password = 'password') for pidx in range(len(self.participants))):
+            Participation.objects.create(user = participant, tournament = tournament, slot_id = Participation.next_slot_id(tournament))
+
+        # Initialize the tournament.
+        tournament.update_state() # TODO: wrap errors as TestError (also below, individually for each stage)
+
+        # Play through the tournament, always make the participant with the higher ID win.
+        while tournament.current_stage is not None:
+
+            # Play the current level, then update the tournament state.
+            for fixture in tournament.current_stage.current_fixtures:
+
+                for participant in tournament.participants[:fixture.required_confirmations_count]:
+                    fixture.confirmations.add(participant)
+
+                fixture.score = (fixture.player1.id, fixture.player2.id)
+                fixture.save()
+
+            tournament.update_state()
+
+        transaction.set_rollback(True)
 
 
 class Participation(models.Model):

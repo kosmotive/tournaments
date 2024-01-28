@@ -134,7 +134,7 @@
 
                         {% if tournament.participations.count >= 3 %}
 
-                            <a class="btn btn-warning {{ button_classes }}" href="{% url 'update-tournament' pk=tournament.id %}" role="button"><i class="bi bi-play-fill"></i> Start</a>
+                            <a class="btn btn-warning {{ button_classes }}" href="{% url 'active-tournament' pk=tournament.id %}" role="button"><i class="bi bi-play-fill"></i> Start</a>
 
                         {% endif %}
 

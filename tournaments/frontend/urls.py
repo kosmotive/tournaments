@@ -13,6 +13,7 @@ urlpatterns = [
     path('t/delete/<int:pk>', views.DeleteTournamentView.as_view(), name='delete-tournament'),
     path('t/join/<int:pk>', views.JoinTournamentView.as_view(), name='join-tournament'),
     path('t/withdraw/<int:pk>', views.WithdrawTournamentView.as_view(), name='withdraw-tournament'),
+    path('t/active/<int:pk>', views.ActiveTournamentView.as_view(), name='active-tournament'),
     path('accounts/login/', LoginView.as_view(template_name = 'frontend/login.html'), name='login'),
     path('accounts/signup/', views.SignupView.as_view(), name='signup'),
     path('accounts/logout/', LogoutView.as_view(), name='logout'),
