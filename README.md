@@ -46,7 +46,7 @@ rm -rf */migrations
 
 Create migrations:
 ```bash
-python manage.py makemigrations
+python manage.py makemigrations tournaments
 ```
 
 Create database:
