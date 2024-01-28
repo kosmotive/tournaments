@@ -113,6 +113,12 @@ class UpdateTournamentView(IsCreatorMixin, SingleObjectMixin, VersionInfoMixin, 
     template_name = 'frontend/update-tournament.html'
     model = models.Tournament
 
+    def test_func(self):
+        if self.request.method == 'GET' and self.get_object().state != 'draft':
+            return True
+        else:
+            return super(UpdateTournamentView, self).test_func()
+
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
         return super(UpdateTournamentView, self).get(request, *args, **kwargs)

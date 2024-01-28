@@ -128,7 +128,7 @@ class Tournament(models.Model):
             Participation.objects.create(user = participant, tournament = tournament, slot_id = Participation.next_slot_id(tournament))
 
         # Initialize the tournament.
-        tournament.update_state() # TODO: wrap errors as TestError (also below, individually for each stage)
+        tournament.update_state() # TODO: wrap errors as ValidationError (also below, individually for each stage)
 
         # Play through the tournament, always make the participant with the higher ID win.
         while tournament.current_stage is not None:

@@ -3,11 +3,11 @@
 {% load crispy_forms_tags %}
 {% load capture_tags %}
 
-{% block title %}update{% endblock %}
+{% block title %}{% if tournament.state == 'draft' %}update{% else %}details{% endif %}{% endblock %}
 
 {% block header %}
 
-<h1>Update Tournament</h1>
+<h1>{% if tournament.state == 'draft' %}Update Tournament{% else %}Tournament Details{% endif %}</h1>
 
 {% endblock %}
 
