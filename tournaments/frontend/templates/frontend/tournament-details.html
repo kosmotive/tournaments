@@ -14,8 +14,8 @@
 
     {% if tournament.participants %}
 
-        <p class="card-text"><small>
-        <span class="text-muted">Attendees:</span>
+        <p class="card-text" style="line-height: 1em;"><small>
+        <span class="text-muted"><strong>Attendees:</strong></span>
         {% for participant in tournament.participants %}
 
             <span class="d-inline-block"><i class="bi bi-person"></i> {{ participant }}</span>
@@ -84,7 +84,7 @@
                 {% endfor %}
                 </ol>
             {% else %}
-                <p><strong>Played by:</strong> All participants</p>
+                <p><strong>Played by:</strong> All attendees</p>
             {% endif %}
         
         </small></li>
@@ -142,7 +142,7 @@
 
                 {% else %}
 
-                    <a class="btn btn-primary {{ button_classes }}" href="{% url 'update-tournament' pk=tournament.id %}" role="button"><i class="bi bi-table"></i> Details</a>
+                    <a class="btn btn-primary {{ button_classes }}" href="{% url 'active-tournament' pk=tournament.id %}" role="button"><i class="bi bi-table"></i> Progress</a>
 
                 {% endif %}
 

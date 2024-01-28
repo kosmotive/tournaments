@@ -17,21 +17,21 @@
 
 {% block content %}
 
-{% if drafts %}
-
-    <hr>
-    <h2>Your Drafts</h2>
-    
-    {% include "frontend/tournament-list.html" with tournaments=drafts %}
-
-{% endif %}
-
 {% if active %}
 
     <hr>
     <h2>Active</h2>
     
     {% include "frontend/tournament-list.html" with tournaments=active %}
+
+{% endif %}
+
+{% if drafts %}
+
+    <hr>
+    <h2>Your Drafts</h2>
+    
+    {% include "frontend/tournament-list.html" with tournaments=drafts %}
 
 {% endif %}
 

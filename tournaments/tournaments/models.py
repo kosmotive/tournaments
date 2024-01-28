@@ -103,7 +103,12 @@ class Tournament(models.Model):
     def _get_podium(self):
         podium = list()
         for identifier, position in parse_participants_str_list(self.podium_spec):
-            podium_chunk = unwrap_list(self.stages.get(identifier = identifier).placements[position])
+
+            try:
+                podium_chunk = unwrap_list(self.stages.get(identifier = identifier).placements[position])
+            except IndexError:
+                raise ValueError(f'insufficient participants: {identifier}[{position}] is out of range')
+
             if isinstance(podium_chunk, list):
                 podium += podium_chunk
             else:
@@ -128,21 +133,29 @@ class Tournament(models.Model):
             Participation.objects.create(user = participant, tournament = tournament, slot_id = Participation.next_slot_id(tournament))
 
         # Initialize the tournament.
-        tournament.update_state() # TODO: wrap errors as ValidationError (also below, individually for each stage)
+        tournament.update_state()
 
         # Play through the tournament, always make the participant with the higher ID win.
         while tournament.current_stage is not None:
 
-            # Play the current level, then update the tournament state.
-            for fixture in tournament.current_stage.current_fixtures:
+            try:
 
-                for participant in tournament.participants[:fixture.required_confirmations_count]:
-                    fixture.confirmations.add(participant)
+                # Play the current level, then update the tournament state.
+                for fixture in tournament.current_stage.current_fixtures:
 
-                fixture.score = (fixture.player1.id, fixture.player2.id)
-                fixture.save()
+                    for participant in tournament.participants[:fixture.required_confirmations_count]:
+                        fixture.confirmations.add(participant)
 
-            tournament.update_state()
+                    fixture.score = (fixture.player1.id, fixture.player2.id)
+                    fixture.save()
+
+                tournament.update_state()
+
+            except Exception as error:
+                if tournament.current_stage is None:
+                    raise ValidationError(f'Error while validating podium ({error}).')
+                else:
+                    raise ValidationError(f'Error while validating "{tournament.current_stage.identifier}" stage ({error}).')
 
         transaction.set_rollback(True)
 
@@ -249,7 +262,12 @@ class Mode(PolymorphicModel):
             return self.tournament.participants
         participants = list()
         for identifier, position in parse_participants_str_list(self.played_by):
-            participants_chunk = unwrap_list(self.tournament.stages.get(identifier = identifier).placements[position])
+
+            try:
+                participants_chunk = unwrap_list(self.tournament.stages.get(identifier = identifier).placements[position])
+            except IndexError:
+                raise ValueError(f'insufficient participants: {identifier}[{position}] is out of range')
+
             if isinstance(participants_chunk, list):
                 participants += participants_chunk
             else:
@@ -496,8 +514,8 @@ class Knockout(Mode):
     def placements(self):
         if self.fixtures.count() == 0:
             return None
-        final, semifinal1, semifinal2 = self.fixtures.all()[:3]
-        return [final.winner] + [fixture.loser for fixture in self.fixtures.all()]
+        final_match = self.fixtures.all()[0]
+        return [final_match.winner] + [fixture.loser for fixture in self.fixtures.all()]
 
 
 class Fixture(models.Model):

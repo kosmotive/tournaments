@@ -2,6 +2,7 @@ from django.contrib.auth import login, authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
 from django.views.generic import DeleteView, ListView, View
 from django.views.generic.detail import SingleObjectMixin
@@ -215,11 +216,20 @@ class ActiveTournamentView(LoginRequiredMixin, SingleObjectMixin, VersionInfoMix
     model = models.Tournament
 
     def get(self, request, *args, **kwargs):
-        self.tournament = self.get_object()
-        if self.tournament.state == 'open':
-            self.tournament.test()
-            # TODO: catch errors
-            # - IntegrityError (content irrelevant to end-user)
+        self.object = self.get_object()
+        if self.object.state == 'open':
+
+            try:
+                self.object.test()
+            except ValidationError as error:
+                request.session['alert'] = dict(status = 'danger', text = '\n'.join(error))
+                return redirect('update-tournament', pk = self.object.id)
+
+            # Change tournament state to "active".
+            self.object.update_state()
+
+        if self.object.state == 'active':
+            return render(request, 'frontend/active-tournament.html', self.get_context_data())
 
     def post(self, request, *args, **kwargs):
         pass

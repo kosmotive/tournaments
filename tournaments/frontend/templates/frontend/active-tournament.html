@@ -1,0 +1,32 @@
+{% extends "frontend/base.html" %}
+
+{% load crispy_forms_tags %}
+{% load capture_tags %}
+
+{% block title %}progress{% endblock %}
+
+{% block header %}
+
+<h1>Tournament Progress</h1>
+
+{% endblock %}
+
+{% block content %}
+
+<div class="row align-items-start">
+
+    <div class="col-4">
+
+        {% capture silent %}
+            <a class="btn btn-danger btn-sm" href="{% url 'active-tournament' pk=object.id %}" role="button"><i class="bi bi-door-open"></i> Abandon</a>
+        {% endcapture %}
+        {% include "frontend/tournament-details.html" with tournament=object buttons=capture %}
+
+    </div>
+    <div class="col-8">
+
+    </div>
+
+</div>
+
+{% endblock %}
