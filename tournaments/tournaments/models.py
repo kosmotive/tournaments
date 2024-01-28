@@ -115,7 +115,7 @@ class Tournament(models.Model):
         try:
             for identifier, position in parse_participants_str_list(self.podium_spec):
                 try:
-                    unwrap_list(self.stages.get(identifier = identifier))
+                    self.stages.get(identifier = identifier)
                 except Mode.DoesNotExist:
                     raise ValueError(f'stage "{identifier}" does not exist')
         except Exception as error:
@@ -158,7 +158,7 @@ def parse_participants_str_list(participants_str_list):
 
     # Verify that the list of participants is disjoint.
     if len(references) > len(frozenset(references)):
-        raise ValueError(f'List of participants is not disjoint.')
+        raise ValueError(f'list of participants is not disjoint')
 
     return references
 
@@ -197,7 +197,7 @@ class Mode(PolymorphicModel):
         try:
             for identifier, position in parse_participants_str_list(self.played_by):
                 try:
-                    unwrap_list(self.tournament.stages.get(identifier = identifier))
+                    self.tournament.stages.get(identifier = identifier)
                 except Mode.DoesNotExist:
                     raise ValueError(f'stage "{identifier}" does not exist')
         except Exception as error:
