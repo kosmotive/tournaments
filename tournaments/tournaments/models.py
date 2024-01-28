@@ -102,8 +102,8 @@ class Tournament(models.Model):
 
     def _get_podium(self):
         podium = list()
-        for identifier, placements_slice in parse_participants_str_list(self.podium_spec):
-            podium_chunk = unwrap_list(self.stages.get(identifier = identifier).placements[placements_slice])
+        for identifier, position in parse_participants_str_list(self.podium_spec):
+            podium_chunk = unwrap_list(self.stages.get(identifier = identifier).placements[position])
             if isinstance(podium_chunk, list):
                 podium += podium_chunk
             else:
@@ -113,7 +113,7 @@ class Tournament(models.Model):
     def clean(self):
         super(Tournament, self).clean()
         try:
-            for identifier, placements_slice in parse_participants_str_list(self.podium_spec):
+            for identifier, position in parse_participants_str_list(self.podium_spec):
                 try:
                     unwrap_list(self.stages.get(identifier = identifier))
                 except Mode.DoesNotExist:
@@ -148,7 +148,19 @@ class Participation(models.Model):
 
 
 def parse_participants_str_list(participants_str_list):
-    return [parse_placements_str(participants_str) for participants_str in participants_str_list]
+    participants = [parse_placements_str(participants_str) for participants_str in participants_str_list]
+
+    # Convert list of (identifier, slice) pairs into list of (identifier, position) pairs.
+    references = list()
+    for identifier, placements_slice in participants:
+        for position in range(placements_slice.stop)[placements_slice]:
+            references.append((identifier, position))
+
+    # Verify that the list of participants is disjoint.
+    if len(references) > len(frozenset(references)):
+        raise ValueError(f'List of participants is not disjoint.')
+
+    return references
 
 
 def parse_placements_str(placement_str):
@@ -183,7 +195,7 @@ class Mode(PolymorphicModel):
     def clean(self):
         super(Mode, self).clean()
         try:
-            for identifier, placements_slice in parse_participants_str_list(self.played_by):
+            for identifier, position in parse_participants_str_list(self.played_by):
                 try:
                     unwrap_list(self.tournament.stages.get(identifier = identifier))
                 except Mode.DoesNotExist:
@@ -211,8 +223,8 @@ class Mode(PolymorphicModel):
         if len(self.played_by) == 0:
             return self.tournament.participants
         participants = list()
-        for identifier, placements_slice in parse_participants_str_list(self.played_by):
-            participants_chunk = unwrap_list(self.tournament.stages.get(identifier = identifier).placements[placements_slice])
+        for identifier, position in parse_participants_str_list(self.played_by):
+            participants_chunk = unwrap_list(self.tournament.stages.get(identifier = identifier).placements[position])
             if isinstance(participants_chunk, list):
                 participants += participants_chunk
             else:

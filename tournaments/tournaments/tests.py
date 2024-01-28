@@ -1060,3 +1060,45 @@ class TournamentTest(TestCase):
         actual_podium = [p.id for p in tournament.podium]
         expected_podium = [p1.id, p2.id, p3.id]
         self.assertEqual(actual_podium, expected_podium)
+
+    def test_podium_duplicates(self):
+        yml = \
+        """
+        stages:
+        -
+          id: main_round
+          mode: knockout
+
+        podium:
+        - main_round.placements[0]
+        - main_round.placements[1]
+        - main_round.placements[:2]
+        - main_round.placements[2]
+        """
+        tournament = Tournament.load(yml, 'Test Cup')
+        self.assertRaises(ValidationError, tournament.full_clean)
+
+    def test_mode_played_by_duplicates(self):
+        yml = \
+        """
+        stages:
+        -
+          id: main_round
+          mode: knockout
+        -
+          id: playoffs
+          mode: division
+          played-by:
+          - main_round.placements[0]
+          - main_round.placements[1]
+          - main_round.placements[:2]
+          - main_round.placements[2]
+
+        podium:
+        - playoffs.placements[0]
+        - playoffs.placements[1]
+        """
+        tournament = Tournament.load(yml, 'Test Cup')
+        tournament.clean()
+        for stage in tournament.stages.all():
+            self.assertRaises(ValidationError, stage.full_clean)
