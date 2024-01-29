@@ -452,3 +452,51 @@ class JoinTournamentViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIs(response.resolver_match.func.view_class, views.UpdateTournamentView)
         self.assertTrue(self.user1 in self.user1_tournament.participants)
+
+
+class WithdrawTournamentViewTests(TestCase):
+
+    def setUp(self):
+        self.user1 = models.User.objects.create(username = 'test1')
+        self.user2 = models.User.objects.create(username = 'test2')
+        self.client.force_login(self.user1)
+
+        self.user1_tournament = models.Tournament.load(definition = test_tournament1_yml, name = 'Test1', creator = self.user1, published = True)
+        self.user2_tournament = models.Tournament.load(definition = test_tournament1_yml, name = 'Test2', creator = self.user2, published = True)
+
+        for tournament in models.Participation.objects.all():
+            for user in models.User.objects.all():
+                models.Participation.objects.create(tournament = tournament, user = user, slot_id = models.Participation.next_slot_id(tournament))
+
+    def test_unauthenticated(self):
+        self.client.logout()
+
+        response = self.client.get(reverse('withdraw-tournament', kwargs = dict(pk = self.user1_tournament.id)), follow = True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.resolver_match.func.view_class, LoginView)
+
+    def test_not_found(self):
+        response = self.client.get(reverse('withdraw-tournament', kwargs = dict(pk = 0)))
+        self.assertEqual(response.status_code, 404)
+
+    def test_foreign(self):
+        response = self.client.get(reverse('withdraw-tournament', kwargs = dict(pk = self.user2_tournament.id)), follow = True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.resolver_match.func.view_class, views.UpdateTournamentView)
+        self.assertFalse(self.user1 in self.user2_tournament.participants)
+
+    def test_drafted(self):
+        self.user1_tournament.published = False
+        self.user1_tournament.save()
+        response = self.client.get(reverse('withdraw-tournament', kwargs = dict(pk = self.user1_tournament.id)), follow = True)
+        self.assertEqual(response.status_code, 412)
+
+    def test_withdrawn(self):
+        self.test()
+        self.test()
+
+    def test(self):
+        response = self.client.get(reverse('withdraw-tournament', kwargs = dict(pk = self.user1_tournament.id)), follow = True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.resolver_match.func.view_class, views.UpdateTournamentView)
+        self.assertFalse(self.user1 in self.user1_tournament.participants)
