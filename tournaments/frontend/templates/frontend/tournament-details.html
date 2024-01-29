@@ -25,6 +25,22 @@
 
     {% endif %}
 
+    {% if tournament.state == 'open' %}
+
+        <p class="card-text" style="line-height: 1em;"><small>
+        {% if tournament.participations.count >= 3 %}
+
+            Tournament can be started by the creator.
+
+        {% else %}
+
+            Tournament can be started by the creator when enough attendees have joined.
+
+        {% endif %}
+        </small></p>
+
+    {% endif %}
+
     {% if tournament.state == 'finished' %}
 
         <p class="card-text" style="line-height: 1em;"><small>
