@@ -3,6 +3,7 @@ from django.test import TestCase
 
 from . import views
 from tournaments import models
+from tournaments.tests import test_tournament1_yml
 
 
 password1 = 'Xz23#!sZ'
@@ -19,6 +20,44 @@ class IndexViewTests(TestCase):
         self.assertNotContains(response, 'Your Drafts')
         self.assertNotContains(response, 'Open')
         self.assertNotContains(response, 'Finished')
+
+    def test_authenticated_empty(self):
+        user = models.User.objects.create(username = 'test1')
+        self.client.force_login(user)
+
+        response = self.client.get(reverse('index'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Create Tournament')
+        self.assertNotContains(response, 'All Stars')
+        self.assertNotContains(response, 'Active')
+        self.assertNotContains(response, 'Your Drafts')
+        self.assertNotContains(response, 'Open')
+        self.assertNotContains(response, 'Finished')
+
+    def test_authenticated_draft_of_other_user(self):
+        tournament = models.Tournament.load(definition = test_tournament1_yml, name = 'Test')
+        self.test_authenticated_empty()
+
+    def test_authenticated_draft(self):
+        user = models.User.objects.create(username = 'test1')
+        self.client.force_login(user)
+
+        tournament = models.Tournament.load(definition = test_tournament1_yml, name = 'Test', creator = user)
+
+        response = self.client.get(reverse('index'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Create Tournament')
+        self.assertNotContains(response, 'All Stars')
+        self.assertNotContains(response, 'Active')
+        self.assertContains(response, 'Your Drafts')
+        self.assertNotContains(response, 'Open')
+        self.assertNotContains(response, 'Finished')
+
+        self.assertContains(response, 'Preliminaries')
+        self.assertContains(response, 'Main Round')
+        self.assertContains(response, 'Match for 3rd Place')
+        self.assertContains(response, 'Podium')
+        self.assertContains(response, 'Edit')
 
 
 class SignupViewTests(TestCase):
