@@ -1,9 +1,21 @@
+import re
+
 import yaml
 from django import forms
+from django.contrib.auth.forms import UserCreationForm
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
 from tournaments import models
+
+
+class SignupForm(UserCreationForm):
+
+    def clean_username(self):
+        ret = super(SignupForm, self).clean_username()
+        if re.match(r'^testuser-[0-9]+$', self.cleaned_data.get('username')):
+            raise ValidationError('This username is reserved.')
+        return ret
 
 
 class CreateTournamentForm(forms.Form):

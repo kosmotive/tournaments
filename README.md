@@ -71,6 +71,13 @@ Run tests:
 python manage.py test
 ```
 
+Compute test coverage:
+```bash
+coverage run --source='.' manage.py test
+coverage html
+```
+This assumes that *coverage.py* was installed (e.g., `pip install coverage`).
+
 Run the local server:
 ```bash
 python manage.py runserver

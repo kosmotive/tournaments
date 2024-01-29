@@ -1,6 +1,5 @@
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
@@ -13,7 +12,7 @@ from django.urls import reverse
 
 from tournaments import models
 
-from .forms import CreateTournamentForm, UpdateTournamentForm
+from .forms import CreateTournamentForm, UpdateTournamentForm, SignupForm
 from .git import get_head_info
 
 
@@ -58,11 +57,11 @@ class SignupView(VersionInfoMixin, View):
 
     def get(self, request, *args, **kwargs):
         context = self.get_context_data(**kwargs)
-        context['form'] = UserCreationForm()
+        context['form'] = SignupForm()
         return render(request, 'frontend/signup.html', context)
 
     def post(self, request, *args, **kwargs):
-        form = UserCreationForm(request.POST)
+        form = SignupForm(request.POST)
         if form.is_valid():
             form.save()
             username = form.cleaned_data.get('username')
@@ -96,6 +95,7 @@ class IndexView(VersionInfoMixin, ListView):
         context['finished'] = published_tournaments.filter(podium_size__gte = 1)
 
         context['allstars'] = [models.Participation.objects.filter(podium_position = position).annotate(count = Count('user')) for position in range(3)]
+        if not any(context['allstars']): context['allstars'] = None
 
         return context
 
