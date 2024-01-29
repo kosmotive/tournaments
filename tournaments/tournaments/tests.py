@@ -98,6 +98,9 @@ class split_into_groups_Test(TestCase):
         ]
         self.assertEqual(actual, expected)
 
+    def test_impossible(self):
+        self.assertRaises(ValueError, lambda: split_into_groups([1, 2, 3, 4, 5], min_group_size=3, max_group_size=4))
+
 
 class create_division_schedule_Test(TestCase):
 

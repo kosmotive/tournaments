@@ -138,6 +138,7 @@ class Tournament(models.Model):
         # Play through the tournament, always make the participant with the higher ID win.
         while tournament.current_stage is not None:
 
+            assert tournament.current_stages.fixtures.count() > 0
             try:
 
                 # Play the current level, then update the tournament state.
@@ -324,8 +325,14 @@ def split_into_groups(items, min_group_size, max_group_size):
         groups[next_group_idx].append(item)
         next_group_idx = (next_group_idx + 1) % len(groups)
 
-    # Return all non-empty groups.
-    return [group for group in groups if len(group) > 0]
+    # Retain only non-empty groups.
+    groups = [group for group in groups if len(group) > 0]
+
+    # Check `min_group_size` constraint.
+    if any((len(group) < min_group_size for group in groups)):
+        raise ValueError('insufficient participants')
+
+    return groups
 
 
 def create_division_schedule(participants, with_returns = False):
