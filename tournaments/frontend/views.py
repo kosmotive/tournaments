@@ -95,6 +95,8 @@ class IndexView(VersionInfoMixin, ListView):
         context['active']   = published_tournaments.filter(fixtures__gte = 1, podium_size = 0)
         context['finished'] = published_tournaments.filter(podium_size__gte = 1)
 
+        context['allstars'] = [models.Participation.objects.filter(podium_position = position).annotate(count = Count('user')) for position in range(3)]
+
         return context
 
 

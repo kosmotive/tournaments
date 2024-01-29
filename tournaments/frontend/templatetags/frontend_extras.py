@@ -1,6 +1,7 @@
 import string
 
 from django import template
+from django.utils.safestring import mark_safe
 
 from tournaments.models import parse_participants_str_list
 
@@ -13,6 +14,7 @@ def get_type(value):
     return type(value).__name__
 
 
+@register.filter
 def position_to_str(pos):
     pos = str(int(pos))
     if pos.endswith('1'):
@@ -58,3 +60,8 @@ def get_item(dictionary, key):
 @register.filter
 def group_letter(counter, offset = 1):
     return string.ascii_uppercase[counter - offset]
+
+
+@register.filter
+def allstar_badge(count):
+    return mark_safe('&starf;' * count)

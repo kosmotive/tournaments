@@ -1,5 +1,7 @@
 {% extends "frontend/base.html" %}
 
+{% load frontend_extras %}
+
 {% block title %}index{% endblock %}
 
 {% block header %}
@@ -14,8 +16,40 @@
 
 {% endblock %}
 
-
 {% block content %}
+
+{% if allstars %}
+
+    <hr>
+    <h2>All Stars</h2>
+
+    <div class="row align-items-start">
+    {% for results in allstars %}
+
+        <div class="col-4">
+
+            <h3><small class="podium-{{ forloop.counter }}"><strong>{{ forloop.counter | position_to_str }}</strong> Placements</small></h3>
+
+            <ul class="list-inline">
+            {% for result in results %}
+
+                <li class="list-inline-item">
+
+                    <i class="bi bi-person"></i> {{ result.user }}
+
+                    <span class="badge badge-pill badge-dark">{{ result.count | allstar_badge }}</span>
+
+                </li>
+
+            {% endfor %}
+            </ul>
+
+        </div>
+
+    {% endfor %}
+    </div>
+
+{% endif %}
 
 {% if active %}
 
