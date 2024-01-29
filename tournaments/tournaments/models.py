@@ -133,12 +133,15 @@ class Tournament(models.Model):
             Participation.objects.create(user = participant, tournament = tournament, slot_id = Participation.next_slot_id(tournament))
 
         # Initialize the tournament.
-        tournament.update_state()
+        try:
+            tournament.update_state()
+        except Exception as error:
+            raise ValidationError(f'Error while initializing tournament ({error}).')
 
         # Play through the tournament, always make the participant with the higher ID win.
         while tournament.current_stage is not None:
 
-            assert tournament.current_stages.fixtures.count() > 0
+            assert tournament.current_stage.fixtures.count() > 0
             try:
 
                 # Play the current level, then update the tournament state.
@@ -159,6 +162,9 @@ class Tournament(models.Model):
                     raise ValidationError(f'Error while validating "{tournament.current_stage.identifier}" stage ({error}).')
 
         transaction.set_rollback(True)
+
+    def __str__(self):
+        return self.name
 
 
 @receiver(pre_delete, sender=Tournament)
@@ -290,6 +296,9 @@ class Mode(PolymorphicModel):
                 return level
         return self.levels
 
+    def get_level_name(self, level):
+        return None
+
     @property
     def current_fixtures(self):
         if self.is_finished:
@@ -309,6 +318,9 @@ class Mode(PolymorphicModel):
 
     def update_fixtures(self):
         return False
+
+    def __str__(self):
+        return self.identifier
 
 
 def split_into_groups(items, min_group_size, max_group_size):
@@ -524,6 +536,18 @@ class Knockout(Mode):
         final_match = self.fixtures.all()[0]
         return [final_match.winner] + [fixture.loser for fixture in self.fixtures.all()]
 
+    def get_level_name(self, level):
+        level = self.levels - level
+        assert level >= 1, level
+        if level == 1:
+            return 'Final'
+        if level == 2:
+            return 'Semifinals'
+        if level == 3:
+            return 'Quarter Finals'
+        else:
+            return f'Last {pow(2, level)}'
+
 
 class Fixture(models.Model):
 
@@ -537,7 +561,6 @@ class Fixture(models.Model):
     confirmations = models.ManyToManyField('auth.User', related_name = 'fixture_confirmations')
 
     class Meta:
-        ordering = ('mode', 'level', 'position')
         constraints = [
                 CheckConstraint(
                     check = (Q(score1__isnull = True) & Q(score2__isnull = True)) | (Q(score1__isnull = False) & Q(score2__isnull = False)),

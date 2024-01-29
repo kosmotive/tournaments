@@ -227,6 +227,10 @@ class ActiveTournamentView(SingleObjectMixin, VersionInfoMixin, AlertMixin, View
         self.object = self.get_object()
         if self.object.state == 'open':
 
+            # Tournament can only be started by the creator.
+            if self.object.creator is not None and self.object.creator.id != request.user.id:
+                return HttpResponseForbidden() 
+
             # Check whether there are at least 3 participants.
             if self.object.participations.count() < 3:
                 return HttpResponse(status = 412)
@@ -242,6 +246,12 @@ class ActiveTournamentView(SingleObjectMixin, VersionInfoMixin, AlertMixin, View
 
         if self.object.state == 'active':
             return render(request, 'frontend/active-tournament.html', self.get_context_data())
+
+    def get_level_data(self, stage, level):
+        return {
+            'fixtures': [self.get_fixture_data(stage, level, fixture) for fixture in stage.fixtures.filter(level = level)],
+            'name': stage.get_level_name(level),
+        }
 
     def get_fixture_data(self, stage, level, fixture):
         return {
@@ -261,7 +271,7 @@ class ActiveTournamentView(SingleObjectMixin, VersionInfoMixin, AlertMixin, View
         context['stages'] = dict()
         for stage_idx, stage in enumerate(self.object.stages.all()):
             context['stages'][stage.id] = dict(
-                levels = [[self.get_fixture_data(stage, level, fixture) for fixture in stage.fixtures.filter(level = level)] for level in range(stage.levels)]
+                levels = [self.get_level_data(stage, level) for level in range(stage.levels)]
             )
 
             if stage.id == self.object.current_stage.id:
@@ -318,9 +328,9 @@ class ActiveTournamentView(SingleObjectMixin, VersionInfoMixin, AlertMixin, View
         if fixture.confirmations.filter(id = request.user.id).count() == 0:
             fixture.confirmations.add(request.user)
 
-        request.session['alert'] = dict(status = 'success', text = 'Your confirmation has been saved.')
-        return redirect('active-tournament', pk = self.object.id)
-
         # Update the state of the tournament as soon as the fixture is fully confirmed.
         if fixture.is_confirmed:
             self.object.update_state()
+
+        request.session['alert'] = dict(status = 'success', text = 'Your confirmation has been saved.')
+        return redirect('active-tournament', pk = self.object.id)

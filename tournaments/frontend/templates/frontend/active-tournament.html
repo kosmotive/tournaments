@@ -43,18 +43,20 @@
 
                     <!-- Begin Stage -->
 
-                    <div class="collapse {% if forloop.last %}show{% endif %}" id="stage-{{ forloop.counter }}">
+                    <div class="collapse {% if forloop.counter == current_stage %}show{% endif %}" id="stage-{{ forloop.counter }}">
 
-                        <div class="{% if forloop.counter < current_stage %}border rounded mb-3{% endif %}">
+                        <div class="{% if forloop.counter < current_stage %}border rounded mb-3{% else %}mb-4{% endif %}">
                         {% for level in stage_info.levels %}
 
-                            <div class="p-2 mb-3 {% if forloop.counter == stage.current_level|add:1 %}border rounded{% elif forloop.parentloop.counter == current_stage %}text-muted{% endif %}">
+                            <div class="p-2 {% if not forloop.last %} mb-2 {% endif %} {% if forloop.counter == stage.current_level|add:1 %}border rounded{% elif forloop.parentloop.counter == current_stage %}text-muted{% endif %}">
 
-                                <p class="lead">
-                                    Matchday {{ forloop.counter }}
-                                </p>
+                                {% if stage_info.levels|length > 1 %}
+                                    <p class="lead">
+                                        Matchday {{ forloop.counter }}{% if level.name %}: <strong>{{ level.name }}</strong>{% endif %}
+                                    </p>
+                                {% endif %}
 
-                                {% for fixture in level %}
+                                {% for fixture in level.fixtures %}
 
                                     <!-- Begin Fixture -->
 
@@ -62,7 +64,7 @@
 
                                         <input type="hidden" name="fixture_id" value="{{ fixture.data.id }}">
                                         {% csrf_token %}
-                                        <div class="row bg-light rounded-top mx-0 mt-2 py-2 {% if not fixture.editable %}rounded-bottom{% endif %}">
+                                        <div class="row bg-light rounded-top py-2 mx-0 {% if stage_info.levels|length > 1 %}mt-2{% endif %} {% if not fixture.editable %}rounded-bottom{% endif %}">
 
                                             <div class="col-4 text-left">
                                                 <strong><i class="bi bi-person"></i> {{ fixture.data.player1 }}</strong>
@@ -117,12 +119,11 @@
 
                         {% endfor %}
                         </div>
-
-                        <div class="p-2 mb-3 border rounded"> 
                         {% with stage_type=stage|get_type %}
 
-                            {% if stage_type == 'Groups' %}
+                            {% if stage_type == 'Groups' and stage.participants|length > 2 %}
 
+                                <div class="p-2 mb-3 border rounded"> 
                                 {% for standings in stage.standings %}
 
                                     {% if stage.standings|length > 1 %}
@@ -161,11 +162,11 @@
                                     </table>
 
                                 {% endfor %}
+                                </div>
 
                             {% endif %}
 
                         {% endwith %}
-                        </div>
 
                     </div>
 

@@ -682,7 +682,7 @@ class GroupsTest(ModeTestBase, TestCase):
         }
         for n in range(2, 9):
             with self.subTest(n = n):
-                mode = Groups.objects.create(tournament = self.tournament, min_group_size = 2, max_group_size = 2)
+                mode = Groups.objects.create(tournament = self.tournament, min_group_size = 2, max_group_size = 3)
                 self.clear_participants(self.tournament)
                 self.add_participants(self.tournament, n)
                 mode.create_fixtures(self.participants[:n])
@@ -1102,6 +1102,6 @@ class TournamentTest(TestCase):
         - playoffs.placements[1]
         """
         tournament = Tournament.load(yml, 'Test Cup')
-        tournament.clean()
-        for stage in tournament.stages.all():
-            self.assertRaises(ValidationError, stage.full_clean)
+        tournament.full_clean()
+        tournament.stages.all()[0].full_clean()
+        self.assertRaises(ValidationError, tournament.stages.all()[1].full_clean)
