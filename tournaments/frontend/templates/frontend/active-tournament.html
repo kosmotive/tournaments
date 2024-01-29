@@ -9,6 +9,9 @@
 {% block header %}
 
 <h1>Tournament Progress</h1>
+{% if tournament.state == 'finished' %}
+<h2><small class="text-muted">Finished</small></h2>
+{% endif %}
 
 {% endblock %}
 
@@ -183,6 +186,36 @@
             {% endif %}
 
         {% endfor %}
+
+        {% if tournament.state == 'finished' %}
+
+            <h2>Podium</h2>
+
+            {% for participator in tournament.podium %}
+
+                <div>
+
+                    {% if forloop.counter == 1 %}
+                        <p class="lead mb-0 podium-1"><i class="bi bi-1-circle-fill"></i> Gold</p>
+                    {% elif forloop.counter == 2 %}
+                        <p class="lead mb-0 podium-2"><i class="bi bi-2-circle-fill"></i> Silver</p>
+                    {% elif forloop.counter == 3 %}
+                        <p class="lead mb-0 podium-3"><i class="bi bi-3-circle-fill"></i> Bronze</p>
+                    {% else %}
+                        <p class="lead mb-0">Place {{ forloop.counter }}</p>
+                    {% endif %}
+
+                    <p class="pl-4"><i class="bi bi-person"></i> {{ participator }}</p>
+
+                    {% if forloop.counter == 3 and not forloop.last %}
+                    <p>&nbsp;</p>
+                    {% endif %}
+
+                </div>
+
+            {% endfor %}
+
+        {% endif %}
 
     </div>
 

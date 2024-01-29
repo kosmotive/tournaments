@@ -89,12 +89,12 @@ class Tournament(models.Model):
     def state(self):
         if not self.published:
             return 'draft'
-        if Fixture.objects.filter(mode__tournament = self).count() > 0:
-            return 'active'
-        if self.current_stage is None:
-            return 'finished'
-        else:
+        if Fixture.objects.filter(mode__tournament = self).count() == 0:
             return 'open'
+        if self.current_stage is not None:
+            return 'active'
+        else:
+            return 'finished'
 
     @property
     def podium(self):

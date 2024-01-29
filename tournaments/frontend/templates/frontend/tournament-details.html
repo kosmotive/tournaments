@@ -24,6 +24,19 @@
         </small></p>
 
     {% endif %}
+
+    {% if tournament.state == 'finished' %}
+
+        <p class="card-text" style="line-height: 1em;"><small>
+        <span class="text-muted"><strong>Podium:</strong></span>
+        {% for participant in tournament.podium %}
+
+            <span class="d-inline-block podium-{{ forloop.counter }}"><i class="bi bi-person"></i> {{ participant }}</span>
+
+        {% endfor %}
+        </small></p>
+
+    {% endif %}
     
     <ul class="list-group list-group-flush">
     

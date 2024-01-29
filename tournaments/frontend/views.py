@@ -244,7 +244,7 @@ class ActiveTournamentView(SingleObjectMixin, VersionInfoMixin, AlertMixin, View
             # Change tournament state to "active".
             self.object.update_state()
 
-        if self.object.state == 'active':
+        if self.object.state in ('active', 'finished'):
             return render(request, 'frontend/active-tournament.html', self.get_context_data())
 
     def get_level_data(self, stage, level):
@@ -274,8 +274,11 @@ class ActiveTournamentView(SingleObjectMixin, VersionInfoMixin, AlertMixin, View
                 levels = [self.get_level_data(stage, level) for level in range(stage.levels)]
             )
 
-            if stage.id == self.object.current_stage.id:
+            if self.object.current_stage and stage.id == self.object.current_stage.id:
                 context['current_stage'] = stage_idx + 1
+
+        if self.object.current_stage is None:
+            context['current_stage'] = self.object.stages.count() + 1
 
         return context
 
