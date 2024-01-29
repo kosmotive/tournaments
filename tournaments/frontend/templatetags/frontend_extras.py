@@ -1,3 +1,5 @@
+import string
+
 from django import template
 
 from tournaments.models import parse_participants_str_list
@@ -51,3 +53,8 @@ def stage_name(stage, number):
 @register.filter
 def get_item(dictionary, key):
     return dictionary.get(key)
+
+
+@register.filter
+def group_letter(counter, offset = 1):
+    return string.ascii_uppercase[counter - offset]

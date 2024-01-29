@@ -41,6 +41,8 @@
 
                 {% with stage_info=stages|get_item:stage.id %}
 
+                    <!-- Begin Stage -->
+
                     {% for level in stage_info.levels %}
 
                         <div class="p-2 mb-3 {% if forloop.counter == stage.current_level|add:1 %}border rounded{% else %}text-muted{% endif %}">
@@ -50,6 +52,8 @@
                             </p>
 
                             {% for fixture in level %}
+
+                                <!-- Begin Fixture -->
 
                                 <form method="post" action="" class="fixture-{{ fixture.data.id }}">
 
@@ -102,11 +106,64 @@
 
                                 </form>
 
+                                <!-- End Fixture -->
+
                             {% endfor %}
 
                         </div>
 
                     {% endfor %}
+
+                    <div class="p-2 mb-3"> 
+                    {% with stage_type=stage|get_type %}
+
+                        {% if stage_type == 'Groups' %}
+
+                            {% for standings in stage.standings %}
+
+                                {% if stage.standings|length > 1 %}
+                                    <p class="lead">Group {{ forloop.counter|group_letter:1 }}</p>
+                                {% endif %}
+
+                                <table class="table">
+
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Position</th>
+                                            <th scope="col">Attendee</th>
+                                            <th scope="col">Matches</th>
+                                            <th scope="col">Wins</th>
+                                            <th scope="col">Losses</th>
+                                            <th scope="col">Ties</th>
+                                            <th scope="col">Points</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    {% for row in standings %}
+
+                                        <tr>
+                                            <th scope="row">{{ forloop.counter }}</th>
+                                            <td>{{ row.participant }}</td>
+                                            <td>{{ row.matches }}</td>
+                                            <td>{{ row.win_count }}</td>
+                                            <td>{{ row.loss_count }}</td>
+                                            <td>{{ row.draw_count }}</td>
+                                            <td>{{ row.points }}</td>
+                                        </tr>
+
+                                    {% endfor %}
+                                    </tbody>
+
+                                </table>
+
+                            {% endfor %}
+
+                        {% endif %}
+
+                    {% endwith %}
+                    </div> 
+
+                    <!-- End Stage -->
 
                 {% endwith %}
 
