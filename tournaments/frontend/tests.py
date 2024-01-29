@@ -1,3 +1,6 @@
+import re
+
+from django.contrib.auth.views import LoginView, LogoutView
 from django.urls import reverse
 from django.test import TestCase
 
@@ -7,6 +10,12 @@ from tournaments.tests import test_tournament1_yml
 
 
 password1 = 'Xz23#!sZ'
+
+
+def strip_yaml_indent(yaml):
+    lines = [line for line in yaml.split('\n') if len(line) > 0]
+    indent = min((len(re.match(r'^([ ]*)', line).group(1)) for line in lines))
+    return '\n'.join((line[indent:] for line in lines))
 
 
 class IndexViewTests(TestCase):
@@ -124,3 +133,63 @@ class SignupViewTests(TestCase):
         self.assertContains(response, 'Password confirmation')
         self.assertContains(response, 'There have been issues with your input. Please see below and try again.')
         self.assertContains(response, 'This username is reserved.')
+
+
+class CreateTournamentViewTests(TestCase):
+
+    def setUp(self):
+        user = models.User.objects.create(username = 'test1')
+        self.client.force_login(user)
+
+    def test_unauthenticated(self):
+        self.client.logout()
+
+        response = self.client.get(reverse('create-tournament'), follow = True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.resolver_match.func.view_class, LoginView)
+
+        response = self.client.post(reverse('create-tournament'), follow = True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.resolver_match.func.view_class, LoginView)
+
+    def test_form(self):
+
+        # Verify the form.
+        response = self.client.get(reverse('create-tournament'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Create Tournament')
+        self.assertContains(response, 'Name')
+        self.assertContains(response, 'Definition')
+        self.assertContains(response, 'Preview')
+
+    def test_post(self):
+
+        # Submit the form.
+        response = self.client.post(
+            reverse('create-tournament'),
+            dict(
+                name = 'Test',
+                definition = strip_yaml_indent(test_tournament1_yml),
+            ),
+            follow = True,
+        )
+
+        # Verify the response.
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.resolver_match.func.view_class, views.UpdateTournamentView)
+
+    def test_post_illegal_yaml(self):
+
+        # Submit the form.
+        response = self.client.post(reverse('create-tournament'), dict(
+            name = 'Test',
+            definition = '1 + 1',
+        ))
+
+        # Verify the form and the error.
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Create Tournament')
+        self.assertContains(response, 'Name')
+        self.assertContains(response, 'Definition')
+        self.assertContains(response, 'Preview')
+        self.assertContains(response, 'Definition must be supplied in valid YAML.')
