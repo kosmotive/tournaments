@@ -317,9 +317,11 @@ class PublishTournamentViewTests(TestCase):
         response = self.client.get(reverse('publish-tournament', kwargs = dict(pk = self.user1_tournament.id)), follow = True)
         self.assertEqual(response.status_code, 200)
         self.assertIs(response.resolver_match.func.view_class, views.UpdateTournamentView)
+        self.user1_tournament.refresh_from_db()
+        self.assertTrue(self.user1_tournament.published)
 
 
-class PublishTournamentViewTests(TestCase):
+class DraftTournamentViewTests(TestCase):
 
     def setUp(self):
         user1 = models.User.objects.create(username = 'test1')
@@ -332,31 +334,33 @@ class PublishTournamentViewTests(TestCase):
     def test_unauthenticated(self):
         self.client.logout()
 
-        response = self.client.get(reverse('publish-tournament', kwargs = dict(pk = self.user1_tournament.id)), follow = True)
+        response = self.client.get(reverse('draft-tournament', kwargs = dict(pk = self.user1_tournament.id)), follow = True)
         self.assertEqual(response.status_code, 200)
         self.assertIs(response.resolver_match.func.view_class, LoginView)
 
     def test_not_found(self):
-        response = self.client.get(reverse('publish-tournament', kwargs = dict(pk = 0)))
+        response = self.client.get(reverse('draft-tournament', kwargs = dict(pk = 0)))
         self.assertEqual(response.status_code, 404)
 
     def test_foreign(self):
-        response = self.client.get(reverse('publish-tournament', kwargs = dict(pk = self.user2_tournament.id)))
+        response = self.client.get(reverse('draft-tournament', kwargs = dict(pk = self.user2_tournament.id)))
         self.assertEqual(response.status_code, 403)
 
         self.user2_tournament.creator = None
         self.user2_tournament.save()
 
-        response = self.client.get(reverse('publish-tournament', kwargs = dict(pk = self.user2_tournament.id)))
+        response = self.client.get(reverse('draft-tournament', kwargs = dict(pk = self.user2_tournament.id)))
         self.assertEqual(response.status_code, 403)
 
-    def test_published(self):
-        self.user1_tournament.published = True
+    def test_drafted(self):
+        self.user1_tournament.published = False
         self.user1_tournament.save()
-        response = self.client.get(reverse('publish-tournament', kwargs = dict(pk = self.user1_tournament.id)))
+        response = self.client.get(reverse('draft-tournament', kwargs = dict(pk = self.user1_tournament.id)))
         self.assertEqual(response.status_code, 412)
 
     def test(self):
-        response = self.client.get(reverse('publish-tournament', kwargs = dict(pk = self.user1_tournament.id)), follow = True)
+        response = self.client.get(reverse('draft-tournament', kwargs = dict(pk = self.user1_tournament.id)), follow = True)
         self.assertEqual(response.status_code, 200)
         self.assertIs(response.resolver_match.func.view_class, views.UpdateTournamentView)
+        self.user1_tournament.refresh_from_db()
+        self.assertFalse(self.user1_tournament.published)

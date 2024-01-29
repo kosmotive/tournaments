@@ -22,7 +22,7 @@ class Tournament(models.Model):
     creator = models.ForeignKey('auth.User', on_delete = models.SET_NULL, related_name = 'tournaments', null = True, blank = True)
 
     @staticmethod
-    def load(definition, name, creator = None):
+    def load(definition, name, **kwargs):
         if isinstance(definition, str):
             import yaml
             definition = yaml.safe_load(definition)
@@ -31,7 +31,7 @@ class Tournament(models.Model):
         if len(definition['podium']) == 0:
             raise ValidationError('No podium definition given.')
 
-        tournament = Tournament.objects.create(name = name, podium_spec = definition['podium'], creator = creator)
+        tournament = Tournament.objects.create(name = name, podium_spec = definition['podium'], **kwargs)
 
         for stage in definition['stages']:
             stage = {key.replace('-', '_'): value for key, value in stage.items()}
