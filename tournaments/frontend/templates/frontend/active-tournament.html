@@ -27,7 +27,7 @@
 
             {% if forloop.counter < current_stage %}
 
-                <h2>{{ stage | stage_name:forloop.counter }}</h2>
+                <h2><a data-toggle="collapse" href="#stage-{{ forloop.counter }}" role="button" class="text-dark">{{ stage | stage_name:forloop.counter }}</a></h2>
 
             {% endif %}
 
@@ -43,131 +43,137 @@
 
                     <!-- Begin Stage -->
 
-                    {% for level in stage_info.levels %}
+                    <div class="collapse {% if forloop.last %}show{% endif %}" id="stage-{{ forloop.counter }}">
 
-                        <div class="p-2 mb-3 {% if forloop.counter == stage.current_level|add:1 %}border rounded{% else %}text-muted{% endif %}">
+                        <div class="{% if forloop.counter < current_stage %}border rounded mb-3{% endif %}">
+                        {% for level in stage_info.levels %}
 
-                            <p class="lead">
-                                Matchday {{ forloop.counter }}
-                            </p>
+                            <div class="p-2 mb-3 {% if forloop.counter == stage.current_level|add:1 %}border rounded{% elif forloop.parentloop.counter == current_stage %}text-muted{% endif %}">
 
-                            {% for fixture in level %}
+                                <p class="lead">
+                                    Matchday {{ forloop.counter }}
+                                </p>
 
-                                <!-- Begin Fixture -->
+                                {% for fixture in level %}
 
-                                <form method="post" action="" class="fixture-{{ fixture.data.id }}">
+                                    <!-- Begin Fixture -->
 
-                                    <input type="hidden" name="fixture_id" value="{{ fixture.data.id }}">
-                                    {% csrf_token %}
-                                    <div class="row bg-light rounded-top mx-0 mt-2 py-2 {% if not fixture.editable %}rounded-bottom{% endif %}">
+                                    <form method="post" action="" class="fixture-{{ fixture.data.id }}">
 
-                                        <div class="col-4 text-left">
-                                            <strong><i class="bi bi-person"></i> {{ fixture.data.player1 }}</strong>
-                                        </div>
-                                        <div class="col-1 text-center" style="padding: 0;">
-                                            {% if fixture.editable and not fixture.has_confirmed %}
-                                                <input name="score1" value="{{ fixture.data.score1 | default_if_none:"" }}" class="text-center bg-white" style="width: 100%; border: 0; background: none;" oninput="update_fixture(this)">
-                                                <input name="score1-original" type="hidden" value="{{ fixture.data.score1 | default_if_none:"" }}" >
-                                            {% else %}
-                                                {{ fixture.data.score1 | default_if_none:"&ndash;" }}
-                                            {% endif %}
-                                        </div>
-                                        <div class="col-2 text-center">:</div>
-                                        <div class="col-1 text-center" style="padding: 0;">
-                                            {% if fixture.editable and not fixture.has_confirmed %}
-                                                <input name="score2" value="{{ fixture.data.score2 | default_if_none:"" }}" class="text-center bg-white" style="width: 100%; border: 0; background: none;" oninput="update_fixture(this)">
-                                                <input name="score2-original" type="hidden" value="{{ fixture.data.score2 | default_if_none:"" }}" >
-                                            {% else %}
-                                                {{ fixture.data.score2 | default_if_none:"&ndash;" }}
-                                            {% endif %}
-                                        </div>
-                                        <div class="col-4 text-right">
-                                            <strong><i class="bi bi-person"></i> {{ fixture.data.player2 }}</strong>
-                                        </div>
+                                        <input type="hidden" name="fixture_id" value="{{ fixture.data.id }}">
+                                        {% csrf_token %}
+                                        <div class="row bg-light rounded-top mx-0 mt-2 py-2 {% if not fixture.editable %}rounded-bottom{% endif %}">
 
-                                    </div>
-                                    {% if fixture.editable %}
-                                        <div class="row bg-light rounded-bottom mx-0 py-2 border-top">
-                                            <div class="col-12 text-right">
-                                                {% if fixture.data.score1 == None or fixture.data.score2 == None %}
-                                                    <button class="btn btn-sm btn-outline-success"><i class="bi bi-check-lg"></i> Submit</button>
+                                            <div class="col-4 text-left">
+                                                <strong><i class="bi bi-person"></i> {{ fixture.data.player1 }}</strong>
+                                            </div>
+                                            <div class="col-1 text-center" style="padding: 0;">
+                                                {% if fixture.editable and not fixture.has_confirmed %}
+                                                    <input name="score1" value="{{ fixture.data.score1 | default_if_none:"" }}" class="text-center bg-white" style="width: 100%; border: 0; background: none;" oninput="update_fixture(this)">
+                                                    <input name="score1-original" type="hidden" value="{{ fixture.data.score1 | default_if_none:"" }}" >
                                                 {% else %}
-                                                    <small>Confirmations: {{ fixture.data.confirmations.count }} / {{ fixture.data.required_confirmations_count }}</small>
-                                                    {% if not fixture.has_confirmed %}
-                                                        <button class="btn btn-sm btn-outline-success btn-confirm"><i class="bi bi-check-lg"></i> Confirm</button>
-                                                        <button class="btn btn-sm btn-outline-danger btn-rebuttal" style="display: none;">Rebuttal</button>
-                                                    {% else %}
-                                                        <small class="text-success ml-2"><i class="bi bi-patch-check-fill"></i> You have confirmed.</small>
-                                                    {% endif %}
+                                                    {{ fixture.data.score1 | default_if_none:"&ndash;" }}
                                                 {% endif %}
                                             </div>
+                                            <div class="col-2 text-center">:</div>
+                                            <div class="col-1 text-center" style="padding: 0;">
+                                                {% if fixture.editable and not fixture.has_confirmed %}
+                                                    <input name="score2" value="{{ fixture.data.score2 | default_if_none:"" }}" class="text-center bg-white" style="width: 100%; border: 0; background: none;" oninput="update_fixture(this)">
+                                                    <input name="score2-original" type="hidden" value="{{ fixture.data.score2 | default_if_none:"" }}" >
+                                                {% else %}
+                                                    {{ fixture.data.score2 | default_if_none:"&ndash;" }}
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-4 text-right">
+                                                <strong><i class="bi bi-person"></i> {{ fixture.data.player2 }}</strong>
+                                            </div>
+
                                         </div>
-                                    {% endif %}
+                                        {% if fixture.editable %}
+                                            <div class="row bg-light rounded-bottom mx-0 py-2 border-top">
+                                                <div class="col-12 text-right">
+                                                    {% if fixture.data.score1 == None or fixture.data.score2 == None %}
+                                                        <button class="btn btn-sm btn-outline-success"><i class="bi bi-check-lg"></i> Submit</button>
+                                                    {% else %}
+                                                        <small>Confirmations: {{ fixture.data.confirmations.count }} / {{ fixture.data.required_confirmations_count }}</small>
+                                                        {% if not fixture.has_confirmed %}
+                                                            <button class="btn btn-sm btn-outline-success btn-confirm"><i class="bi bi-check-lg"></i> Confirm</button>
+                                                            <button class="btn btn-sm btn-outline-danger btn-rebuttal" style="display: none;">Rebuttal</button>
+                                                        {% else %}
+                                                            <small class="text-success ml-2"><i class="bi bi-patch-check-fill"></i> You have confirmed.</small>
+                                                        {% endif %}
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        {% endif %}
 
-                                </form>
+                                    </form>
 
-                                <!-- End Fixture -->
+                                    <!-- End Fixture -->
 
-                            {% endfor %}
+                                {% endfor %}
 
+                            </div>
+
+                        {% endfor %}
                         </div>
 
-                    {% endfor %}
+                        <div class="p-2 mb-3 border rounded"> 
+                        {% with stage_type=stage|get_type %}
 
-                    <div class="p-2 mb-3"> 
-                    {% with stage_type=stage|get_type %}
+                            {% if stage_type == 'Groups' %}
 
-                        {% if stage_type == 'Groups' %}
+                                {% for standings in stage.standings %}
 
-                            {% for standings in stage.standings %}
+                                    {% if stage.standings|length > 1 %}
+                                        <p class="lead">Group {{ forloop.counter|group_letter:1 }}</p>
+                                    {% endif %}
 
-                                {% if stage.standings|length > 1 %}
-                                    <p class="lead">Group {{ forloop.counter|group_letter:1 }}</p>
-                                {% endif %}
+                                    <table class="table">
 
-                                <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">Position</th>
+                                                <th scope="col">Attendee</th>
+                                                <th scope="col">Matches</th>
+                                                <th scope="col">Wins</th>
+                                                <th scope="col">Losses</th>
+                                                <th scope="col">Ties</th>
+                                                <th scope="col">Points</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                        {% for row in standings %}
 
-                                    <thead>
-                                        <tr>
-                                            <th scope="col">Position</th>
-                                            <th scope="col">Attendee</th>
-                                            <th scope="col">Matches</th>
-                                            <th scope="col">Wins</th>
-                                            <th scope="col">Losses</th>
-                                            <th scope="col">Ties</th>
-                                            <th scope="col">Points</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                    {% for row in standings %}
+                                            <tr>
+                                                <th scope="row">{{ forloop.counter }}</th>
+                                                <td>{{ row.participant }}</td>
+                                                <td>{{ row.matches }}</td>
+                                                <td>{{ row.win_count }}</td>
+                                                <td>{{ row.loss_count }}</td>
+                                                <td>{{ row.draw_count }}</td>
+                                                <td>{{ row.points }}</td>
+                                            </tr>
 
-                                        <tr>
-                                            <th scope="row">{{ forloop.counter }}</th>
-                                            <td>{{ row.participant }}</td>
-                                            <td>{{ row.matches }}</td>
-                                            <td>{{ row.win_count }}</td>
-                                            <td>{{ row.loss_count }}</td>
-                                            <td>{{ row.draw_count }}</td>
-                                            <td>{{ row.points }}</td>
-                                        </tr>
+                                        {% endfor %}
+                                        </tbody>
 
-                                    {% endfor %}
-                                    </tbody>
+                                    </table>
 
-                                </table>
+                                {% endfor %}
 
-                            {% endfor %}
+                            {% endif %}
 
-                        {% endif %}
+                        {% endwith %}
+                        </div>
 
-                    {% endwith %}
-                    </div> 
+                    </div>
 
                     <!-- End Stage -->
 
                 {% endwith %}
 
-                {% if forloop.counter < forloop.last %}
+                {% if forloop.counter < current_stage %}
 
                     <hr>
 
