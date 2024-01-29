@@ -144,7 +144,7 @@
 
                         {% if tournament.participations.count >= 3 %}
 
-                            <a class="btn btn-warning {{ button_classes }}" href="{% url 'active-tournament' pk=tournament.id %}" role="button"><i class="bi bi-play-fill"></i> Start</a>
+                            <a class="btn btn-warning {{ button_classes }}" href="{% url 'tournament-progress' pk=tournament.id %}" role="button"><i class="bi bi-play-fill"></i> Start</a>
 
                         {% endif %}
 
@@ -152,7 +152,7 @@
 
                 {% else %}
 
-                    <a class="btn btn-primary {{ button_classes }}" href="{% url 'active-tournament' pk=tournament.id %}" role="button"><i class="bi bi-table"></i> Progress</a>
+                    <a class="btn btn-primary {{ button_classes }}" href="{% url 'tournament-progress' pk=tournament.id %}" role="button"><i class="bi bi-table"></i> Progress</a>
 
                 {% endif %}
 

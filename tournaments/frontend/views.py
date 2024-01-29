@@ -219,7 +219,7 @@ class WithdrawTournamentView(LoginRequiredMixin, SingleObjectMixin, View):
         return redirect('update-tournament', pk = self.object.id)
 
 
-class ActiveTournamentView(SingleObjectMixin, VersionInfoMixin, AlertMixin, View):
+class TournamentProgressView(SingleObjectMixin, VersionInfoMixin, AlertMixin, View):
 
     model = models.Tournament
 
@@ -245,7 +245,7 @@ class ActiveTournamentView(SingleObjectMixin, VersionInfoMixin, AlertMixin, View
             self.object.update_state()
 
         if self.object.state in ('active', 'finished'):
-            return render(request, 'frontend/active-tournament.html', self.get_context_data())
+            return render(request, 'frontend/tournament-progress.html', self.get_context_data())
 
     def get_level_data(self, stage, level):
         return {
@@ -261,7 +261,7 @@ class ActiveTournamentView(SingleObjectMixin, VersionInfoMixin, AlertMixin, View
         }
 
     def get_context_data(self, **kwargs):
-        context = super(ActiveTournamentView, self).get_context_data(**kwargs)
+        context = super(TournamentProgressView, self).get_context_data(**kwargs)
         context.update(VersionInfoMixin.get_context_data(self, **kwargs))
         context['breadcrumb'] = create_breadcrumb([
             dict(label = 'Index', url = reverse('index')),
@@ -307,7 +307,7 @@ class ActiveTournamentView(SingleObjectMixin, VersionInfoMixin, AlertMixin, View
             new_score = (int(request.POST.get('score1').strip()), int(request.POST.get('score2').strip()))
         except ValueError:
             request.session['alert'] = dict(status = 'danger', text = 'You have not entered a valid score.')
-            return redirect('active-tournament', pk = self.object.id)
+            return redirect('tournament-progress', pk = self.object.id)
 
         # Update the fixture.
         if fixture.score != new_score:
@@ -322,7 +322,7 @@ class ActiveTournamentView(SingleObjectMixin, VersionInfoMixin, AlertMixin, View
                 fixture.full_clean()
             except ValidationError as error:
                 request.session['alert'] = dict(status = 'danger', text = error)
-                return redirect('active-tournament', pk = self.object.id)
+                return redirect('tournament-progress', pk = self.object.id)
 
             fixture.save()
             fixture.confirmations.clear()
@@ -336,4 +336,4 @@ class ActiveTournamentView(SingleObjectMixin, VersionInfoMixin, AlertMixin, View
             self.object.update_state()
 
         request.session['alert'] = dict(status = 'success', text = 'Your confirmation has been saved.')
-        return redirect('active-tournament', pk = self.object.id)
+        return redirect('tournament-progress', pk = self.object.id)
