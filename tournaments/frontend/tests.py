@@ -321,6 +321,17 @@ class PublishTournamentViewTests(TestCase):
         self.assertTrue(self.user1_tournament.published)
 
 
+def start_tournament(tournament):
+    if not tournament.published:
+        tournament.published = True
+        tournament.save()
+    users = [models.User.objects.create(username = f'user{idx}') for idx in range(10)]
+    for user in users:
+        models.Participation.objects.create(tournament = tournament, user = user, slot_id = models.Participation.next_slot_id(tournament))
+    tournament.update_state()
+    assert tournament.state == 'active'
+
+
 class DraftTournamentViewTests(TestCase):
 
     def setUp(self):
@@ -355,6 +366,11 @@ class DraftTournamentViewTests(TestCase):
     def test_drafted(self):
         self.user1_tournament.published = False
         self.user1_tournament.save()
+        response = self.client.get(reverse('draft-tournament', kwargs = dict(pk = self.user1_tournament.id)))
+        self.assertEqual(response.status_code, 412)
+
+    def test_active(self):
+        start_tournament(self.user1_tournament)
         response = self.client.get(reverse('draft-tournament', kwargs = dict(pk = self.user1_tournament.id)))
         self.assertEqual(response.status_code, 412)
 
@@ -403,6 +419,11 @@ class DeleteTournamentViewTests(TestCase):
         response = self.client.get(reverse('delete-tournament', kwargs = dict(pk = self.user1_tournament.id)))
         self.assertEqual(response.status_code, 412)
 
+    def test_active(self):
+        start_tournament(self.user1_tournament)
+        response = self.client.get(reverse('delete-tournament', kwargs = dict(pk = self.user1_tournament.id)))
+        self.assertEqual(response.status_code, 412)
+
     def test(self):
         response = self.client.get(reverse('delete-tournament', kwargs = dict(pk = self.user1_tournament.id)), follow = True)
         self.assertEqual(response.status_code, 200)
@@ -441,6 +462,11 @@ class JoinTournamentViewTests(TestCase):
         self.user1_tournament.published = False
         self.user1_tournament.save()
         response = self.client.get(reverse('join-tournament', kwargs = dict(pk = self.user1_tournament.id)), follow = True)
+        self.assertEqual(response.status_code, 412)
+
+    def test_active(self):
+        start_tournament(self.user1_tournament)
+        response = self.client.get(reverse('join-tournament', kwargs = dict(pk = self.user1_tournament.id)))
         self.assertEqual(response.status_code, 412)
 
     def test_joined(self):
@@ -489,6 +515,11 @@ class WithdrawTournamentViewTests(TestCase):
         self.user1_tournament.published = False
         self.user1_tournament.save()
         response = self.client.get(reverse('withdraw-tournament', kwargs = dict(pk = self.user1_tournament.id)), follow = True)
+        self.assertEqual(response.status_code, 412)
+
+    def test_active(self):
+        start_tournament(self.user1_tournament)
+        response = self.client.get(reverse('withdraw-tournament', kwargs = dict(pk = self.user1_tournament.id)))
         self.assertEqual(response.status_code, 412)
 
     def test_withdrawn(self):
