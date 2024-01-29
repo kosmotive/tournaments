@@ -6,7 +6,7 @@ from django.test import TestCase
 
 from . import views
 from tournaments import models
-from tournaments.tests import test_tournament1_yml
+from tournaments.tests import test_tournament1_yml, _confirm_fixture
 
 
 password1 = 'Xz23#!sZ'
@@ -321,15 +321,21 @@ class PublishTournamentViewTests(TestCase):
         self.assertTrue(self.user1_tournament.published)
 
 
-def start_tournament(tournament):
+def add_participators(tournament, number = 10):
     if not tournament.published:
         tournament.published = True
         tournament.save()
-    users = [models.User.objects.create(username = f'user{idx}') for idx in range(10)]
+    users = [models.User.objects.get_or_create(username = f'user{idx}')[0] for idx in range(number)]
     for user in users:
         models.Participation.objects.create(tournament = tournament, user = user, slot_id = models.Participation.next_slot_id(tournament))
+    return users
+
+
+def start_tournament(tournament, **kwargs):
+    users = add_participators(tournament, **kwargs)
     tournament.update_state()
     assert tournament.state == 'active'
+    return users
 
 
 class DraftTournamentViewTests(TestCase):
@@ -587,3 +593,198 @@ class CloneTournamentViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIs(response.resolver_match.func.view_class, views.UpdateTournamentView)
         self.assertEqual(clone.definition, self.user1_tournament.definition)
+
+
+class TournamentProgressViewTests(TestCase):
+
+    def setUp(self):
+        self.user1 = models.User.objects.create(username = 'test1')
+        self.user2 = models.User.objects.create(username = 'test2')
+        self.client.force_login(self.user1)
+
+        self.tournament1 = models.Tournament.load(definition = test_tournament1_yml, name = 'Test1', creator = self.user1, published = True)
+        self.tournament2 = models.Tournament.load(definition = test_tournament1_yml, name = 'Test2', creator = self.user2, published = True)
+
+        self.users = add_participators(self.tournament1, number = 10)
+
+    def test_unauthenticated_open(self):
+        """
+        Starting a tournament as an authenticated user yields 403 (forbidden).
+        """
+        self.client.logout()
+
+        response = self.client.get(reverse('tournament-progress', kwargs = dict(pk = self.tournament1.id)))
+        self.assertEqual(response.status_code, 403)
+
+    def test_foreign_open(self):
+        """
+        Starting a tournament created by a different user yields 403 (forbidden).
+        """
+        response = self.client.get(reverse('tournament-progress', kwargs = dict(pk = self.tournament2.id)))
+        self.assertEqual(response.status_code, 403)
+
+    def test_unauthenticated_active(self):
+        self.test_open()
+        self.client.logout()
+
+        response = self.client.get(reverse('tournament-progress', kwargs = dict(pk = self.tournament1.id)))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<h2>Preliminaries <small class="text-muted">Current Stage</small></h2>')
+
+    def test_not_found(self):
+        response = self.client.get(reverse('tournament-progress', kwargs = dict(pk = 0)))
+        self.assertEqual(response.status_code, 404)
+
+    def test_drafted(self):
+        self.tournament1.published = False
+        self.tournament1.save()
+        response = self.client.get(reverse('tournament-progress', kwargs = dict(pk = self.tournament1.id)))
+        self.assertEqual(response.status_code, 412)
+
+    def test_less_than_3_participators(self):
+        """
+        Starting a tournament created by the user yields 412 (precondition failed) if there are fewer than 3 participators.
+        """
+        self.client.force_login(self.user2)
+        add_participators(self.tournament2, number = 2)
+        response = self.client.get(reverse('tournament-progress', kwargs = dict(pk = self.tournament2.id)))
+        self.assertEqual(response.status_code, 412)
+
+    def test_less_than_5_participators(self):
+        """
+        Starting a tournament created by the user fails if `Tournament.test` checking fails.
+        """
+        self.client.force_login(self.user2)
+        add_participators(self.tournament2, number = 4)
+        response = self.client.get(reverse('tournament-progress', kwargs = dict(pk = self.tournament2.id)), follow = True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.resolver_match.func.view_class, views.UpdateTournamentView)
+        self.assertContains(response, 'insufficient participants: main_round[2] is out of range')
+
+    def test_less_than_6_participators(self):
+        """
+        Starting a tournament created by the user fails if `Tournament.test` checking fails.
+        """
+        self.client.force_login(self.user2)
+        add_participators(self.tournament2, number = 5)
+        response = self.client.get(reverse('tournament-progress', kwargs = dict(pk = self.tournament2.id)), follow = True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.resolver_match.func.view_class, views.UpdateTournamentView)
+        self.assertContains(response, 'Error while initializing tournament (insufficient participants).')
+
+    def test_open(self):
+        """
+        Successfulls starts an open tournament.
+        """
+        response = self.client.get(reverse('tournament-progress', kwargs = dict(pk = self.tournament1.id)))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.tournament1.state, 'active')
+        self.assertContains(response, '<h2>Preliminaries <small class="text-muted">Current Stage</small></h2>')
+
+    def test_post_open(self):
+        fixture = models.Fixture.objects.create(mode = self.tournament1.stages.all()[0], level = 0, position = 0)
+        response = self.client.post(
+            reverse('tournament-progress', kwargs = dict(pk = self.tournament1.id)),
+            dict(
+                fixture_id = fixture.id,
+                score1 = '10',
+                score2 = '12',
+            ),
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_post_not_participating(self):
+        self.test_open() ## start the tournament
+        fixture = self.tournament1.current_stage.fixtures.filter(level = self.tournament1.current_stage.current_level)[0]
+        response = self.client.post(
+            reverse('tournament-progress', kwargs = dict(pk = self.tournament1.id)),
+            dict(
+                fixture_id = fixture.id,
+                score1 = '10',
+                score2 = '12',
+            ),
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_post_wrong_level(self):
+        self.test_open() ## start the tournament
+        self.client.force_login(self.users[0])
+        fixture = self.tournament1.current_stage.fixtures.filter(level = self.tournament1.current_stage.current_level + 1)[0]
+        response = self.client.post(
+            reverse('tournament-progress', kwargs = dict(pk = self.tournament1.id)),
+            dict(
+                fixture_id = fixture.id,
+                score1 = '10',
+                score2 = '12',
+            ),
+        )
+        self.assertEqual(response.status_code, 412)
+
+    def test_post_wrong_stage(self):
+        self.test_open() ## start the tournament
+        self.client.force_login(self.users[0])
+        next_stage = self.tournament1.stages.all()[1]
+        fixture = models.Fixture.objects.create(mode = next_stage, level = 0, position = 0)
+        response = self.client.post(
+            reverse('tournament-progress', kwargs = dict(pk = self.tournament1.id)),
+            dict(
+                fixture_id = fixture.id,
+                score1 = '10',
+                score2 = '12',
+            ),
+        )
+        self.assertEqual(response.status_code, 412)
+
+    def test_post_already_confirmed(self):
+        self.test_open() ## start the tournament
+        self.client.force_login(self.users[0])
+        fixture = self.tournament1.current_stage.fixtures.filter(level = self.tournament1.current_stage.current_level)[0]
+        _confirm_fixture(self.tournament1.participants, fixture)
+        response = self.client.post(
+            reverse('tournament-progress', kwargs = dict(pk = self.tournament1.id)),
+            dict(
+                fixture_id = fixture.id,
+                score1 = '10',
+                score2 = '12',
+            ),
+            follow = True
+        )
+        self.assertEqual(response.status_code, 412)
+
+    def test_post_invalid_score(self):
+        self.test_open() ## start the tournament
+        self.client.force_login(self.users[0])
+        fixture = self.tournament1.current_stage.fixtures.filter(level = self.tournament1.current_stage.current_level)[0]
+        response = self.client.post(
+            reverse('tournament-progress', kwargs = dict(pk = self.tournament1.id)),
+            dict(
+                fixture_id = fixture.id,
+                score1 = '',
+                score2 = '12',
+            ),
+            follow = True
+        )
+        fixture.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(fixture.score, (None, None))
+        self.assertContains(response, 'You have not entered a valid score.')
+
+    def test_post(self):
+        self.test_open() ## start the tournament
+        self.client.force_login(self.users[0])
+        fixture = self.tournament1.current_stage.fixtures.filter(level = self.tournament1.current_stage.current_level)[0]
+        response = self.client.post(
+            reverse('tournament-progress', kwargs = dict(pk = self.tournament1.id)),
+            dict(
+                fixture_id = fixture.id,
+                score1 = '10',
+                score2 = '12',
+            ),
+            follow = True
+        )
+        fixture.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(fixture.score, (10, 12))
+        self.assertContains(response, 'Your confirmation has been saved.')
+        self.assertContains(response, 'Confirmations: 1 / 6')
+        self.assertContains(response, 'You have confirmed.')

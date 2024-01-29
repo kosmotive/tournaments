@@ -261,6 +261,11 @@ class TournamentProgressView(SingleObjectMixin, VersionInfoMixin, AlertMixin, Vi
 
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
+
+        # Drafted tournaments cannot be started.
+        if self.object.state == 'draft':
+            return HttpResponse(status = 412)
+
         if self.object.state == 'open':
 
             # Tournament can only be started by the creator.
