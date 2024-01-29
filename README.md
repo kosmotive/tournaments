@@ -1,4 +1,9 @@
-# tournaments
+<div align="center">
+  <h1><a href="https://github.com/kostrykin/tournaments">tournaments</a><br>
+  <a href="https://github.com/kostrykin/tournaments/actions/workflows/tests.yml"><img src="https://github.com/kostrykin/tournaments/actions/workflows/tests.yml/badge.svg"></a>
+  <a href="https://github.com/kostrykin/tournaments/actions/workflows/tests.yml"><img src="https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/kostrykin/bb85310a74d6b05330d230443007b878/raw/tournaments.json" /></a>
+  </h1>
+</div>
 
 ## Initial setup
 
