@@ -109,6 +109,12 @@
 
 <!-- Custom JavaScript -->
 <script>
+function confirmGoTo(msg, url) {
+    if (confirm(msg)) {
+        window.location.href = url;
+    }
+}
+
 {% block javascript %}{% endblock %}
 </script>
 

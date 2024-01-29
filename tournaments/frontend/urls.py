@@ -14,6 +14,7 @@ urlpatterns = [
     path('t/join/<int:pk>', views.JoinTournamentView.as_view(), name='join-tournament'),
     path('t/withdraw/<int:pk>', views.WithdrawTournamentView.as_view(), name='withdraw-tournament'),
     path('t/progress/<int:pk>', views.TournamentProgressView.as_view(), name='tournament-progress'),
+    path('t/clone/<int:pk>', views.CloneTournamentView.as_view(), name='clone-tournament'),
     path('accounts/login/', LoginView.as_view(template_name = 'frontend/login.html'), name='login'),
     path('accounts/signup/', views.SignupView.as_view(), name='signup'),
     path('accounts/logout/', LogoutView.as_view(), name='logout'),

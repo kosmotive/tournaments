@@ -136,6 +136,11 @@ class UpdateTournamentView(IsCreatorMixin, SingleObjectMixin, VersionInfoMixin, 
 
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
+
+        # Check whether the tournament is in "draft" state.
+        if self.object.state != 'draft':
+            return HttpResponse(status = 412)
+
         return super(UpdateTournamentView, self).post(request, *args, **kwargs)
 
     def form_valid(self, form):
@@ -165,6 +170,11 @@ class PublishTournamentView(IsCreatorMixin, SingleObjectMixin, View):
 
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
+
+        # Check whether the tournament is in "draft" state.
+        if self.object.state != 'draft':
+            return HttpResponse(status = 412)
+
         self.object.published = True
         self.object.save()
         request.session['alert'] = dict(status = 'success', text = 'The tournament is now open and can be joined by you and others.')
@@ -177,6 +187,11 @@ class DraftTournamentView(IsCreatorMixin, SingleObjectMixin, View):
 
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
+
+        # Check whether the tournament is in "open" state.
+        if self.object.state != 'open':
+            return HttpResponse(status = 412)
+
         self.object.published = False
         self.object.participations.all().delete()
         self.object.save()
@@ -190,6 +205,11 @@ class DeleteTournamentView(IsCreatorMixin, SingleObjectMixin, View):
 
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
+
+        # Check whether the tournament is in "draft" state.
+        if self.object.state != 'draft':
+            return HttpResponse(status = 412)
+
         self.object.delete()
         return redirect('index')
 
@@ -200,12 +220,16 @@ class JoinTournamentView(LoginRequiredMixin, SingleObjectMixin, View):
 
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
-        if self.object.state == 'open':
-            models.Participation.objects.create(
-                tournament = self.object,
-                user = self.request.user,
-                slot_id = models.Participation.next_slot_id(self.object))
-            request.session['alert'] = dict(status = 'success', text = 'You have joined the tournament.')
+
+        # Check whether the tournament is in "open" state.
+        if self.object.state != 'open':
+            return HttpResponse(status = 412)
+
+        models.Participation.objects.create(
+            tournament = self.object,
+            user = self.request.user,
+            slot_id = models.Participation.next_slot_id(self.object))
+        request.session['alert'] = dict(status = 'success', text = 'You have joined the tournament.')
         return redirect('update-tournament', pk = self.object.id)
 
 
@@ -215,9 +239,13 @@ class WithdrawTournamentView(LoginRequiredMixin, SingleObjectMixin, View):
 
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
-        if self.object.state == 'open':
-            models.Participation.objects.filter(user = request.user).delete()
-            request.session['alert'] = dict(status = 'success', text = 'You have withdrawn from the tournament.')
+
+        # Check whether the tournament is in "open" state.
+        if self.object.state != 'open':
+            return HttpResponse(status = 412)
+
+        models.Participation.objects.filter(user = request.user).delete()
+        request.session['alert'] = dict(status = 'success', text = 'You have withdrawn from the tournament.')
         return redirect('update-tournament', pk = self.object.id)
 
 
@@ -339,3 +367,19 @@ class TournamentProgressView(SingleObjectMixin, VersionInfoMixin, AlertMixin, Vi
 
         request.session['alert'] = dict(status = 'success', text = 'Your confirmation has been saved.')
         return redirect('tournament-progress', pk = self.object.id)
+
+
+class CloneTournamentView(LoginRequiredMixin, SingleObjectMixin, View):
+
+    model = models.Tournament
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        tournament = models.Tournament.load(
+            definition = self.object.definition,
+            name = self.object.name + ' (Copy)',
+            creator = request.user)
+        tournament.definition = self.object.definition
+        tournament.save()
+        request.session['alert'] = dict(status = 'success', text = f'A copy of the tournament "{ self.object.name }" has been created (see below).')
+        return redirect('update-tournament', pk = tournament.id)
