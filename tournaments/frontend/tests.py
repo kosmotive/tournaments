@@ -165,11 +165,12 @@ class CreateTournamentViewTests(TestCase):
     def test_post(self):
 
         # Submit the form.
+        definition = strip_yaml_indent(test_tournament1_yml)
         response = self.client.post(
             reverse('create-tournament'),
             dict(
                 name = 'Test',
-                definition = strip_yaml_indent(test_tournament1_yml),
+                definition = definition,
             ),
             follow = True,
         )
@@ -177,6 +178,7 @@ class CreateTournamentViewTests(TestCase):
         # Verify the response.
         self.assertEqual(response.status_code, 200)
         self.assertIs(response.resolver_match.func.view_class, views.UpdateTournamentView)
+        self.assertContains(response, definition)
 
     def test_post_illegal_yaml(self):
 

@@ -23,10 +23,12 @@ class Tournament(models.Model):
 
     @staticmethod
     def load(definition, name, **kwargs):
-        definition_str = definition
         if isinstance(definition, str):
             import yaml
+            definition_str = definition
             definition = yaml.safe_load(definition)
+        else:
+            definition_str = None
 
         assert isinstance(definition, dict), repr(definition)
         if len(definition['podium']) == 0:
