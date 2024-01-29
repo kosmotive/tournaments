@@ -158,7 +158,7 @@
 
                 {% if tournament.state == 'finished' %}
 
-                    <a class="btn btn-secondary {{ button_classes }}" href="{% url 'clone-tournament' pk=tournament.id %}" role="button"><i class="bi bi-rewind-circle-fill"></i> Replay</a>
+                    <a class="btn btn-secondary {{ button_classes }}" href="{% url 'clone-tournament' pk=tournament.id %}" role="button"><i class="bi bi-arrow-counterclockwise"></i> Recycle</a>
 
                 {% endif %}
 

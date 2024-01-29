@@ -193,3 +193,84 @@ class CreateTournamentViewTests(TestCase):
         self.assertContains(response, 'Definition')
         self.assertContains(response, 'Preview')
         self.assertContains(response, 'Definition must be supplied in valid YAML.')
+
+
+class UpdateTournamentViewTests(TestCase):
+
+    def setUp(self):
+        user1 = models.User.objects.create(username = 'test1')
+        user2 = models.User.objects.create(username = 'test2')
+        self.client.force_login(user1)
+
+        self.user1_tournament = models.Tournament.load(definition = test_tournament1_yml, name = 'Test1', creator = user1)
+        self.user2_tournament = models.Tournament.load(definition = test_tournament1_yml, name = 'Test2', creator = user2)
+
+    def test_unauthenticated(self):
+        self.client.logout()
+
+        response = self.client.get(reverse('update-tournament', kwargs = dict(pk = self.user1_tournament.id)), follow = True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.resolver_match.func.view_class, LoginView)
+
+        response = self.client.post(reverse('update-tournament', kwargs = dict(pk = self.user1_tournament.id)), follow = True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.resolver_match.func.view_class, LoginView)
+
+    def test_not_found(self):
+        response = self.client.get(reverse('update-tournament', kwargs = dict(pk = 0)))
+        self.assertEqual(response.status_code, 404)
+
+    def test_foreign(self):
+        response = self.client.get(reverse('update-tournament', kwargs = dict(pk = self.user2_tournament.id)))
+        self.assertEqual(response.status_code, 403)
+
+        self.user2_tournament.creator = None
+        self.user2_tournament.save()
+
+        response = self.client.get(reverse('update-tournament', kwargs = dict(pk = self.user2_tournament.id)))
+        self.assertEqual(response.status_code, 403)
+
+    def test_published(self):
+        self.user1_tournament.published = True
+        self.user1_tournament.save()
+        response = self.client.post(reverse('update-tournament', kwargs = dict(pk = self.user1_tournament.id)))
+        self.assertEqual(response.status_code, 412)
+
+    def test(self):
+        response = self.client.get(reverse('update-tournament', kwargs = dict(pk = self.user1_tournament.id)))
+        self.assertEqual(response.status_code, 200)
+
+        # Verify the form.
+        self.assertContains(response, 'Name')
+        self.assertContains(response, 'Test1')
+        self.assertContains(response, 'Definition')
+        self.assertContains(response, 'Preview')
+
+        # Verify preview.
+        self.assertContains(response, 'Preliminaries')
+        self.assertContains(response, 'Main Round')
+        self.assertContains(response, 'Match for 3rd Place')
+        self.assertContains(response, 'Podium')
+        self.assertContains(response, 'Delete')
+        self.assertContains(response, 'Publish')
+
+    def test_post(self):
+
+        # Submit the form.
+        response = self.client.post(
+            reverse('update-tournament', kwargs = dict(pk = self.user1_tournament.id)),
+            dict(
+                name = 'Test1 updated',
+                definition = strip_yaml_indent(test_tournament1_yml),
+            ),
+            follow = True,
+        )
+
+        # Verify the response.
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.resolver_match.func.view_class, views.UpdateTournamentView)
+        self.assertContains(response, 'Test1 updated')
+
+        # Verify that the tournament is re-created.
+        self.assertTrue(models.Tournament.objects.filter(name = 'Test1 updated').count() > 0)
+        self.assertTrue(models.Tournament.objects.filter(id = self.user1_tournament.id).count() == 0)
