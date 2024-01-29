@@ -9,3 +9,5 @@
 /tournaments/*/migrations
 __pycache__
 *.pyc
+.coverage
+coverage.json
