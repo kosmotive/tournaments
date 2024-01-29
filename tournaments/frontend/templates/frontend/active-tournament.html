@@ -51,7 +51,7 @@
 
                             {% for fixture in level %}
 
-                                <form method="post" action="">
+                                <form method="post" action="" class="fixture-{{ fixture.data.id }}">
 
                                     <input type="hidden" name="fixture_id" value="{{ fixture.data.id }}">
                                     {% csrf_token %}
@@ -62,7 +62,8 @@
                                         </div>
                                         <div class="col-1 text-center" style="padding: 0;">
                                             {% if fixture.editable and not fixture.has_confirmed %}
-                                                <input name="score1" value="{{ fixture.data.score1 | default_if_none:"" }}" class="text-center bg-white" style="width: 100%; border: 0; background: none;">
+                                                <input name="score1" value="{{ fixture.data.score1 | default_if_none:"" }}" class="text-center bg-white" style="width: 100%; border: 0; background: none;" oninput="update_fixture(this)">
+                                                <input name="score1-original" type="hidden" value="{{ fixture.data.score1 | default_if_none:"" }}" >
                                             {% else %}
                                                 {{ fixture.data.score1 | default_if_none:"&ndash;" }}
                                             {% endif %}
@@ -70,7 +71,8 @@
                                         <div class="col-2 text-center">:</div>
                                         <div class="col-1 text-center" style="padding: 0;">
                                             {% if fixture.editable and not fixture.has_confirmed %}
-                                                <input name="score2" value="{{ fixture.data.score2 | default_if_none:"" }}" class="text-center bg-white" style="width: 100%; border: 0; background: none;">
+                                                <input name="score2" value="{{ fixture.data.score2 | default_if_none:"" }}" class="text-center bg-white" style="width: 100%; border: 0; background: none;" oninput="update_fixture(this)">
+                                                <input name="score2-original" type="hidden" value="{{ fixture.data.score2 | default_if_none:"" }}" >
                                             {% else %}
                                                 {{ fixture.data.score2 | default_if_none:"&ndash;" }}
                                             {% endif %}
@@ -88,7 +90,8 @@
                                                 {% else %}
                                                     <small>Confirmations: {{ fixture.data.confirmations.count }} / {{ fixture.data.required_confirmations_count }}</small>
                                                     {% if not fixture.has_confirmed %}
-                                                        <button class="btn btn-sm btn-outline-success"><i class="bi bi-check-lg"></i> Confirm</button>
+                                                        <button class="btn btn-sm btn-outline-success btn-confirm"><i class="bi bi-check-lg"></i> Confirm</button>
+                                                        <button class="btn btn-sm btn-outline-danger btn-rebuttal" style="display: none;">Rebuttal</button>
                                                     {% else %}
                                                         <small class="text-success ml-2"><i class="bi bi-patch-check-fill"></i> You have confirmed.</small>
                                                     {% endif %}
@@ -120,5 +123,24 @@
     </div>
 
 </div>
+
+{% endblock %}
+
+{% block javascript %}
+
+function update_fixture(input) {
+    const form = $(input).parents('form');
+    const score1 = form.find('input[name="score1"]').val();
+    const score2 = form.find('input[name="score2"]').val();
+    const score1_original = form.find('input[name="score1-original"]').val();
+    const score2_original = form.find('input[name="score2-original"]').val();
+    if(score1 == score1_original && score2 == score2_original) {
+        form.find('.btn-confirm').show();
+        form.find('.btn-rebuttal').hide();
+    } else {
+        form.find('.btn-confirm').hide();
+        form.find('.btn-rebuttal').show();
+    }
+}
 
 {% endblock %}
