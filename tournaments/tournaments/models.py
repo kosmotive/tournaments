@@ -23,6 +23,7 @@ class Tournament(models.Model):
 
     @staticmethod
     def load(definition, name, **kwargs):
+        definition_str = definition
         if isinstance(definition, str):
             import yaml
             definition = yaml.safe_load(definition)
@@ -31,7 +32,7 @@ class Tournament(models.Model):
         if len(definition['podium']) == 0:
             raise ValidationError('No podium definition given.')
 
-        tournament = Tournament.objects.create(name = name, podium_spec = definition['podium'], **kwargs)
+        tournament = Tournament.objects.create(name = name, podium_spec = definition['podium'], definition = definition_str, **kwargs)
 
         for stage in definition['stages']:
             stage = {key.replace('-', '_'): value for key, value in stage.items()}

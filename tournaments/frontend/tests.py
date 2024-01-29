@@ -531,3 +531,59 @@ class WithdrawTournamentViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIs(response.resolver_match.func.view_class, views.UpdateTournamentView)
         self.assertFalse(self.user1 in self.user1_tournament.participants)
+
+
+class CloneTournamentViewTests(TestCase):
+
+    def setUp(self):
+        self.user1 = models.User.objects.create(username = 'test1')
+        self.user2 = models.User.objects.create(username = 'test2')
+        self.client.force_login(self.user1)
+
+        self.user1_tournament = models.Tournament.load(definition = test_tournament1_yml, name = 'Test1', creator = self.user1, published = True)
+        self.user2_tournament = models.Tournament.load(definition = test_tournament1_yml, name = 'Test2', creator = self.user2, published = True)
+
+    def test_unauthenticated(self):
+        self.client.logout()
+
+        response = self.client.get(reverse('clone-tournament', kwargs = dict(pk = self.user1_tournament.id)), follow = True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.resolver_match.func.view_class, LoginView)
+
+    def test_not_found(self):
+        response = self.client.get(reverse('clone-tournament', kwargs = dict(pk = 0)))
+        self.assertEqual(response.status_code, 404)
+
+    def test_foreign(self):
+        response = self.client.get(reverse('clone-tournament', kwargs = dict(pk = self.user2_tournament.id)), follow = True)
+        clone = models.Tournament.objects.get(name = 'Test2 (Copy)')
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.resolver_match.func.view_class, views.UpdateTournamentView)
+        self.assertEqual(clone.definition, self.user1_tournament.definition)
+        self.assertEqual(clone.creator.id, self.user1.id)
+
+    def test_drafted(self):
+        self.user1_tournament.published = False
+        self.user1_tournament.save()
+        response = self.client.get(reverse('clone-tournament', kwargs = dict(pk = self.user1_tournament.id)), follow = True)
+        clone = models.Tournament.objects.get(name = 'Test1 (Copy)')
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.resolver_match.func.view_class, views.UpdateTournamentView)
+        self.assertEqual(clone.definition, self.user1_tournament.definition)
+        self.assertEqual(clone.creator.id, self.user1.id)
+
+    def test_active(self):
+        start_tournament(self.user1_tournament)
+        response = self.client.get(reverse('clone-tournament', kwargs = dict(pk = self.user1_tournament.id)), follow = True)
+        clone = models.Tournament.objects.get(name = 'Test1 (Copy)')
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.resolver_match.func.view_class, views.UpdateTournamentView)
+        self.assertEqual(clone.definition, self.user1_tournament.definition)
+        self.assertEqual(clone.creator.id, self.user1.id)
+
+    def test(self):
+        response = self.client.get(reverse('clone-tournament', kwargs = dict(pk = self.user1_tournament.id)), follow = True)
+        clone = models.Tournament.objects.get(name = 'Test1 (Copy)')
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.resolver_match.func.view_class, views.UpdateTournamentView)
+        self.assertEqual(clone.definition, self.user1_tournament.definition)

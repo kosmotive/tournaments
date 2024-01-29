@@ -385,7 +385,5 @@ class CloneTournamentView(LoginRequiredMixin, SingleObjectMixin, View):
             definition = self.object.definition,
             name = self.object.name + ' (Copy)',
             creator = request.user)
-        tournament.definition = self.object.definition
-        tournament.save()
         request.session['alert'] = dict(status = 'success', text = f'A copy of the tournament "{ self.object.name }" has been created (see below).')
         return redirect('update-tournament', pk = tournament.id)

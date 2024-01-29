@@ -54,13 +54,10 @@ class CreateTournamentForm(forms.Form):
         return definition
 
     def create_tournament(self, request):
-        tournament = models.Tournament.load(
+        return models.Tournament.load(
             definition = self.cleaned_data['definition'],
             name = self.cleaned_data['name'],
             creator = request.user)
-        tournament.definition = self.data['definition']
-        tournament.save()
-        return tournament
 
 
 class UpdateTournamentForm(CreateTournamentForm):
