@@ -225,10 +225,13 @@ class JoinTournamentView(LoginRequiredMixin, SingleObjectMixin, View):
         if self.object.state != 'open':
             return HttpResponse(status = 412)
 
-        models.Participation.objects.create(
-            tournament = self.object,
-            user = self.request.user,
-            slot_id = models.Participation.next_slot_id(self.object))
+        # Create the participation only if it does not already exist.
+        if not self.object.participations.filter(user = request.user).exists():
+            models.Participation.objects.create(
+                tournament = self.object,
+                user = self.request.user,
+                slot_id = models.Participation.next_slot_id(self.object))
+
         request.session['alert'] = dict(status = 'success', text = 'You have joined the tournament.')
         return redirect('update-tournament', pk = self.object.id)
 
@@ -244,7 +247,10 @@ class WithdrawTournamentView(LoginRequiredMixin, SingleObjectMixin, View):
         if self.object.state != 'open':
             return HttpResponse(status = 412)
 
-        models.Participation.objects.filter(user = request.user).delete()
+        # Delete the participation only if it exists.
+        if self.object.participations.filter(user = request.user).exists():
+            models.Participation.objects.filter(user = request.user).delete()
+
         request.session['alert'] = dict(status = 'success', text = 'You have withdrawn from the tournament.')
         return redirect('update-tournament', pk = self.object.id)
 
