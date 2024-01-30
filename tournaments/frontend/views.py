@@ -276,6 +276,7 @@ class TournamentProgressView(SingleObjectMixin, VersionInfoMixin, AlertMixin, Vi
             if self.object.participations.count() < 3:
                 return HttpResponse(status = 412)
 
+            # Perform a test run.
             try:
                 self.object.test()
             except ValidationError as error:
