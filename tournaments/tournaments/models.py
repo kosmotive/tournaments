@@ -1,10 +1,11 @@
 import math
 import re
+import random
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
-from django.db.models import CheckConstraint, Q, Max
+from django.db.models import CheckConstraint, Q, Min, Max
 from django.db.models.signals import pre_delete
 from django.dispatch import receiver
 
@@ -71,6 +72,29 @@ class Tournament(models.Model):
             if not stage.is_finished:
                 return stage
         return None ## indicates that the tournament is finished
+
+    @transaction.atomic
+    def shuffle_participants(self):
+        count = self.participations.count()
+        if count == 0: return ## early out, so that min/max operations below are well defined
+        new_slot_ids = list(range(count))
+        random.shuffle(new_slot_ids)
+
+        # SQLite does not support deferred unique constraints, therefore we need to work around.
+        min_slot_id = self.participations.aggregate(Min('slot_id'))['slot_id__min']
+        max_slot_id = self.participations.aggregate(Max('slot_id'))['slot_id__max']
+
+        # If any value of `new_slot_ids` is already taken, add an offset to establish uniqueness.
+        if min_slot_id < count:
+            for new_slot_id, participation in zip(new_slot_ids, self.participations.all()):
+                participation.slot_id = max_slot_id + 1 + new_slot_id
+                participation.save()
+
+        # Otherwise, the values of `new_slot_ids` can be assigned directly.
+        else:
+            for new_slot_id, participation in zip(new_slot_ids, self.participations.all()):
+                participation.slot_id = new_slot_id
+                participation.save()
 
     def update_state(self):
         if self.current_stage is None:
@@ -565,10 +589,10 @@ class Fixture(models.Model):
 
     class Meta:
         constraints = [
-                CheckConstraint(
-                    check = (Q(score1__isnull = True) & Q(score2__isnull = True)) | (Q(score1__isnull = False) & Q(score2__isnull = False)),
-                    name = 'score1 and score2 must be both null or neither')
-            ]
+            CheckConstraint(
+                check = (Q(score1__isnull = True) & Q(score2__isnull = True)) | (Q(score1__isnull = False) & Q(score2__isnull = False)),
+                name = 'score1 and score2 must be both null or neither')
+        ]
 
     def clean(self):
         super(Fixture, self).clean()

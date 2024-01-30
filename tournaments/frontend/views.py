@@ -283,6 +283,7 @@ class TournamentProgressView(SingleObjectMixin, VersionInfoMixin, AlertMixin, Vi
                 return redirect('update-tournament', pk = self.object.id)
 
             # Change tournament state to "active".
+            self.object.shuffle_participants()
             self.object.update_state()
 
         if self.object.state in ('active', 'finished'):

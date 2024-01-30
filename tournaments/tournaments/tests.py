@@ -961,6 +961,23 @@ class TournamentTest(TestCase):
         tournament = self.test_load_tournament1()
         tournament.delete()
 
+    def test_shuffle_participants(self, repeat = 0):
+        tournament = self.test_load_tournament1()
+        _add_participants(self.participants, tournament)
+        permutations = list()
+        original_participants = tuple([p.id for p in tournament.participants])
+        for itr in range(repeat + 1):
+            tournament.shuffle_participants()
+            actual_participants = tuple([p.id for p in tournament.participants])
+            self.assertNotIn(actual_participants, permutations)
+            self.assertEqual(len(actual_participants), len(original_participants))
+            for pid in original_participants:
+                self.assertIn(pid, actual_participants)
+            permutations.append(actual_participants)
+
+    def test_shuffle_participants_twice(self):
+        self.test_shuffle_participants(repeat = 1)
+
     def test_current_stage(self):
         tournament = self.test_load_tournament1()
         self.assertEqual(tournament.current_stage.id, tournament.stages.all()[0].id)
