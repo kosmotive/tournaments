@@ -2,63 +2,66 @@
 {% load capture_tags %}
 
 <div class="tournament-details card bg-light">
-<div class="card-body">
 
-    <h4 class="card-title">
-        {{ tournament.name }}
-        {% if tournament.participants %}
-            <span class="badge badge-secondary">{{ tournament.participants.count }} attendee{% if tournament.participants.count > 1 %}s{% endif %}</span>
-        {% endif %}
-    </h4>
-    <h6 class="card-subtitle mb-2 text-muted">Created by {{ tournament.creator }}</h6>
-
-    {% if tournament.participants %}
-
-        <p class="card-text" style="line-height: 1em;"><small>
-        <span class="text-muted"><strong>Attendees:</strong></span>
-        {% for participant in tournament.participants %}
-
-            <span class="d-inline-block"><i class="bi bi-person"></i> {{ participant }}</span>
-
-        {% endfor %}
-        </small></p>
-
-    {% endif %}
-
-    {% if tournament.state == 'open' %}
-
-        <p class="card-text" style="line-height: 1em;"><small>
-        {% if tournament.participations.count >= 3 %}
-
-            <span class="text-success">Tournament is ready to be started by the creator.</span>
-
-        {% else %}
-
-            Tournament can be started by the creator when enough attendees have joined.
-
-        {% endif %}
-        </small></p>
-
-    {% endif %}
-
-    {% if tournament.state == 'finished' %}
-
-        <p class="card-text" style="line-height: 1em;"><small>
-        <span class="text-muted"><strong>Podium:</strong></span>
-        {% for participant in tournament.podium %}
-
-            <span class="d-inline-block podium-{{ forloop.counter }}"><i class="bi bi-person"></i> {{ participant }}</span>
-
-        {% endfor %}
-        </small></p>
-
-    {% endif %}
+    <div class="card-body">
     
+        <h4 class="card-title">
+            {{ tournament.name }}
+            {% if tournament.participants %}
+                <span class="badge badge-secondary">{{ tournament.participants.count }} attendee{% if tournament.participants.count > 1 %}s{% endif %}</span>
+            {% endif %}
+        </h4>
+        <h6 class="card-subtitle mb-2 text-muted">Created by {{ tournament.creator }}</h6>
+    
+        {% if tournament.participants %}
+    
+            <p class="card-text" style="line-height: 1em;"><small>
+            <span class="text-muted"><strong>Attendees:</strong></span>
+            {% for participant in tournament.participants %}
+    
+                <span class="d-inline-block"><i class="bi bi-person"></i> {{ participant }}</span>
+    
+            {% endfor %}
+            </small></p>
+    
+        {% endif %}
+    
+        {% if tournament.state == 'open' %}
+    
+            <p class="card-text" style="line-height: 1em;"><small>
+            {% if tournament.participations.count >= 3 %}
+    
+                <span class="text-success">Tournament is ready to be started by the creator.</span>
+    
+            {% else %}
+    
+                Tournament can be started by the creator when enough attendees have joined.
+    
+            {% endif %}
+            </small></p>
+    
+        {% endif %}
+    
+        {% if tournament.state == 'finished' %}
+    
+            <p class="card-text" style="line-height: 1em;"><small>
+            <span class="text-muted"><strong>Podium:</strong></span>
+            {% for participant in tournament.podium %}
+    
+                <span class="d-inline-block podium-{{ forloop.counter }}"><i class="bi bi-person"></i> {{ participant }}</span>
+    
+            {% endfor %}
+            </small></p>
+    
+        {% endif %}
+    
+    </div>
+        
     <ul class="list-group list-group-flush">
     
         {% for stage in tournament.stages.all %}
         <li class="list-group-item"><small>
-
+    
             {% capture as stage_name silent %}{{ stage | stage_name:forloop.counter }}{% endcapture %}
         
             {% with stage_type=stage|get_type %}
@@ -87,7 +90,7 @@
                     {% endif %}
         
                 {% elif stage_type == 'Knockout' %}
-
+    
                     <h5><i class="bi bi-diagram-2"></i> {{ stage_name }}</h5>
         
                     {% if stage.double_eliminination %}
@@ -128,62 +131,61 @@
             </ol>
         
         </small></li>
-
-        {% if buttons != 'none' %}
-        <li class="list-group-item">
-
-            {% if buttons %}
-
-                {{ buttons }}
-
-            {% else %}
-
-                {% if tournament.state == 'open' %}
-
-                    {% if tournament|is_joined_by:user %}
-
-                        <a class="btn btn-success {{ button_classes }}" href="{% url 'withdraw-tournament' pk=tournament.id %}" role="button"><i class="bi bi-check-lg"></i> Joined</a>
-
-                    {% elif user.id %}
-
-                        <a class="btn btn-outline-success {{ button_classes }}" href="{% url 'join-tournament' pk=tournament.id %}" role="button">Join</a>
-
-                    {% else %}
-
-                        <p><a href="{% url 'login' %}">Login to join.</a></p>
-
-                    {% endif %}
-
-                    {% if tournament.creator == user %}
-
-                        <a class="btn btn-secondary {{ button_classes }}" href="javascript:confirmGoTo('All current attendees will be removed when the tournament is reset to draft mode.', '{% url 'draft-tournament' pk=tournament.id %}');" role="button"><i class="bi bi-eye-fill"></i> Published</a>
-
-                        {% if tournament.participations.count >= 3 %}
-
-                            <a class="btn btn-warning {{ button_classes }}" href="javascript:confirmGoTo('People will not be able to join the tournament after it is started.', '{% url 'tournament-progress' pk=tournament.id %}');" role="button"><i class="bi bi-play-fill"></i> Start</a>
-
-                        {% endif %}
-
-                    {% endif %}
-
-                {% else %}
-
-                    <a class="btn btn-primary {{ button_classes }}" href="{% url 'tournament-progress' pk=tournament.id %}" role="button"><i class="bi bi-table"></i> {% if tournament.state == 'finished' %}Results{% else %}Progress{% endif %}</a>
-
-                {% endif %}
-
-                {% if tournament.state == 'finished' %}
-
-                    <a class="btn btn-secondary {{ button_classes }}" href="{% url 'clone-tournament' pk=tournament.id %}" role="button"><i class="bi bi-arrow-counterclockwise"></i> Recycle</a>
-
-                {% endif %}
-
-            {% endif %}
-        
-        </li>
-        {% endif %}
     
     </ul>
+    
+    {% if buttons != 'none' %}
+    <div class="card-body">
+    
+        {% if buttons %}
+    
+            {{ buttons }}
+    
+        {% else %}
+    
+            {% if tournament.state == 'open' %}
+    
+                {% if tournament|is_joined_by:user %}
+    
+                    <a class="btn btn-success {{ button_classes }}" href="{% url 'withdraw-tournament' pk=tournament.id %}" role="button"><i class="bi bi-check-lg"></i> Joined</a>
+    
+                {% elif user.id %}
+    
+                    <a class="btn btn-outline-success {{ button_classes }}" href="{% url 'join-tournament' pk=tournament.id %}" role="button">Join</a>
+    
+                {% else %}
+    
+                    <p><a href="{% url 'login' %}">Login to join.</a></p>
+    
+                {% endif %}
+    
+                {% if tournament.creator == user %}
+    
+                    <a class="btn btn-secondary {{ button_classes }}" href="javascript:confirmGoTo('All current attendees will be removed when the tournament is reset to draft mode.', '{% url 'draft-tournament' pk=tournament.id %}');" role="button"><i class="bi bi-eye-fill"></i> Published</a>
+    
+                    {% if tournament.participations.count >= 3 %}
+    
+                        <a class="btn btn-warning {{ button_classes }}" href="javascript:confirmGoTo('People will not be able to join the tournament after it is started.', '{% url 'tournament-progress' pk=tournament.id %}');" role="button"><i class="bi bi-play-fill"></i> Start</a>
+    
+                    {% endif %}
+    
+                {% endif %}
+    
+            {% else %}
+    
+                <a class="btn btn-primary {{ button_classes }}" href="{% url 'tournament-progress' pk=tournament.id %}" role="button"><i class="bi bi-table"></i> {% if tournament.state == 'finished' %}Results{% else %}Progress{% endif %}</a>
+    
+            {% endif %}
+    
+            {% if tournament.state == 'finished' %}
+    
+                <a class="btn btn-secondary {{ button_classes }}" href="{% url 'clone-tournament' pk=tournament.id %}" role="button"><i class="bi bi-arrow-counterclockwise"></i> Recycle</a>
+    
+            {% endif %}
+    
+        {% endif %}
+    
+    </div>
+    {% endif %}
 
-</div>
 </div>
