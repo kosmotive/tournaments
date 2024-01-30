@@ -495,9 +495,22 @@ class Knockout(Mode):
         if self.double_elimination:
             raise ValidationError('Double elimination is not implemented yet.')
 
+    @staticmethod
+    def reorder_participants(participants):
+        result = [None] * len(participants)
+        participants = list(participants)
+        for pidx in range(len(participants)):
+            i = pidx // 2
+            j = pidx %  2
+            result[pidx] = participants[i if j == 0 else -i - 1]
+        return result
+
     def create_fixtures(self, participants):
         assert len(participants) >= 2
         levels = math.ceil(math.log2(len(participants)))
+
+        # Re-order the participants so that the first (highest ranked) are matched against the last (lowest ranked).
+        participants = Knockout.reorder_participants(participants)
 
         # Identify fixtures by their path (which, in a binary tree, corresponds to the index of the node in binary representation, starting from `1` for the root).
         remaining_participants = list(participants)

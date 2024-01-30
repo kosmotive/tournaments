@@ -691,6 +691,13 @@ class GroupsTest(ModeTestBase, TestCase):
 
 class KnockoutTest(ModeTestBase, TestCase):
 
+    def test_reorder_participants(self):
+        self.assertEqual(Knockout.reorder_participants([1]), [1])
+        self.assertEqual(Knockout.reorder_participants([1, 2]), [1, 2])
+        self.assertEqual(Knockout.reorder_participants([1, 2, 3]), [1, 3, 2])
+        self.assertEqual(Knockout.reorder_participants([1, 2, 3, 4, 5, 6]), [1, 6, 2, 5, 3, 4])
+        self.assertEqual(Knockout.reorder_participants([1, 2, 3, 4, 5, 6, 7]), [1, 7, 2, 6, 3, 5, 4])
+
     def test_create_fixtures_2participants(self):
         mode = Knockout.objects.create(tournament = self.tournament)
         mode.create_fixtures(self.participants[:2])
@@ -711,7 +718,7 @@ class KnockoutTest(ModeTestBase, TestCase):
         # Verify fixtures.
         actual_fixtures = self.group_fixtures_by_level(mode)
         expected_fixtures = {
-            0: [(4, 3), (2, 1)],
+            0: [(3, 2), (4, 1)],
             1: [(None, None)]
         }
         self.assertEqual(actual_fixtures, expected_fixtures)
@@ -723,8 +730,8 @@ class KnockoutTest(ModeTestBase, TestCase):
         # Verify fixtures.
         actual_fixtures = self.group_fixtures_by_level(mode)
         expected_fixtures = {
-            0: [(2, 1)],
-            1: [(None, 5), (4, 3)],
+            0: [(5, 1)],
+            1: [(None, 3), (4, 2)],
             2: [(None, None)]
         }
         self.assertEqual(actual_fixtures, expected_fixtures)
@@ -738,8 +745,8 @@ class KnockoutTest(ModeTestBase, TestCase):
         # Verify fixtures.
         actual_fixtures = self.group_fixtures_by_level(mode)
         expected_fixtures = {
-            0: [(4, 3), (2, 1)],
-            1: [(None, None), (6, 5)],
+            0: [(5, 2), (6, 1)],
+            1: [(None, None), (4, 3)],
             2: [(None, None)]
         }
         self.assertEqual(actual_fixtures, expected_fixtures)
@@ -764,7 +771,7 @@ class KnockoutTest(ModeTestBase, TestCase):
         mode = self.test_create_fixtures_5participants()
         playoff = mode.current_fixtures.get()
 
-        # Propagate play-off (user-2 vs. user-1).
+        # Propagate play-off (user-5 vs. user-1).
         playoff.score = (10, 12)
         playoff.save()
         propagate_ret = mode.propagate(playoff)
@@ -773,14 +780,14 @@ class KnockoutTest(ModeTestBase, TestCase):
         # Verify fixtures after play-off.
         actual_fixtures = self.group_fixtures_by_level(mode)
         expected_fixtures = {
-            0: [(2, 1)],
-            1: [(1, 5), (4, 3)],
+            0: [(5, 1)],
+            1: [(1, 3), (4, 2)],
             2: [(None, None)]
         }
         self.assertEqual(actual_fixtures, expected_fixtures)
 
-        # Propagate 1st seminfal (user-1 vs. user-5).
-        semifinal1 = mode.fixtures.get(player1 = User.objects.get(id = 1), player2 = User.objects.get(id = 5))
+        # Propagate 1st seminfal (user-1 vs. user-3).
+        semifinal1 = mode.fixtures.get(player1 = User.objects.get(id = 1), player2 = User.objects.get(id = 3))
         semifinal1.score = (12, 10)
         semifinal1.save()
         propagate_ret = mode.propagate(semifinal1)
@@ -789,14 +796,14 @@ class KnockoutTest(ModeTestBase, TestCase):
         # Verify fixtures after 1st semifinal.
         actual_fixtures = self.group_fixtures_by_level(mode)
         expected_fixtures = {
-            0: [(2, 1)],
-            1: [(1, 5), (4, 3)],
+            0: [(5, 1)],
+            1: [(1, 3), (4, 2)],
             2: [(1, None)]
         }
         self.assertEqual(actual_fixtures, expected_fixtures)
 
-        # Propagate 2nd seminfal (user-4 vs. user-3).
-        semifinal2 = mode.fixtures.get(player1 = User.objects.get(id = 4), player2 = User.objects.get(id = 3))
+        # Propagate 2nd seminfal (user-4 vs. user-2).
+        semifinal2 = mode.fixtures.get(player1 = User.objects.get(id = 4), player2 = User.objects.get(id = 2))
         semifinal2.score = (12, 10)
         semifinal2.save()
         propagate_ret = mode.propagate(semifinal2)
@@ -809,8 +816,8 @@ class KnockoutTest(ModeTestBase, TestCase):
         # Verify fixtures after 2nd semifinal.
         actual_fixtures = self.group_fixtures_by_level(mode)
         expected_fixtures = {
-            0: [(2, 1)],
-            1: [(1, 5), (4, 3)],
+            0: [(5, 1)],
+            1: [(1, 3), (4, 2)],
             2: [(1, 4)]
         }
         self.assertEqual(actual_fixtures, expected_fixtures)
@@ -836,7 +843,7 @@ class KnockoutTest(ModeTestBase, TestCase):
         self.assertEqual(mode.current_fixtures.count(), 1)
 
         fixture = mode.current_fixtures.get()
-        self.assertEqual(fixture.player1.id, 2)
+        self.assertEqual(fixture.player1.id, 5)
         self.assertEqual(fixture.player2.id, 1)
 
         self.confirm_fixture(fixture)
@@ -847,9 +854,9 @@ class KnockoutTest(ModeTestBase, TestCase):
 
         fixtures = mode.current_fixtures.all()
         self.assertEqual(fixtures[0].player1.id, 1)
-        self.assertEqual(fixtures[0].player2.id, 5)
+        self.assertEqual(fixtures[0].player2.id, 3)
         self.assertEqual(fixtures[1].player1.id, 4)
-        self.assertEqual(fixtures[1].player2.id, 3)
+        self.assertEqual(fixtures[1].player2.id, 2)
 
         self.confirm_fixture(fixtures[0])
         self.assertEqual(mode.current_level, 1)
@@ -872,7 +879,7 @@ class KnockoutTest(ModeTestBase, TestCase):
     def test_placements(self):
         mode = self.test_propagate()
         actual_placements = [user.id for user in mode.placements]
-        expected_placements = [1, 4, 5, 3, 2]
+        expected_placements = [1, 4, 3, 2, 5]
         self.assertEqual(actual_placements, expected_placements)
 
     def test_placements_empty(self):
