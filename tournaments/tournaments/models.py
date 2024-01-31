@@ -496,7 +496,32 @@ class Knockout(Mode):
             raise ValidationError('Double elimination is not implemented yet.')
 
     @staticmethod
-    def reorder_participants(participants):
+    def reorder_participants(participants, account_for_playoffs):
+        """
+        Re-order the participants to establish a fair ordering.
+
+        The participants are re-ordered so that the first (highest ranked) are matched against the last (lowest ranked).
+        If the number of participants is not a power of 2, playoff matches are required (incomplete levels of the binary tree).
+        The order of participants will account for that if `account_for_playoffs` is True, ensuring that the playoffs will be filled up with the very last participants (lowest ranked).
+        """
+        if len(participants) == 0: return list()
+
+        # Check whether the number of participants is a power of 2.
+        power_of_two_floor = 1 << (len(participants).bit_length() - 1)
+        power_of_two = (power_of_two_floor == len(participants))
+
+        # Account for playoffs.
+        if account_for_playoffs and not power_of_two:
+
+            # Number of participants allocated for the playoffs.
+            n = min((2 * (len(participants) - power_of_two_floor), len(participants)))
+
+            # Allocate the participants.
+            playoffs_part = Knockout.reorder_participants(participants[-n:], account_for_playoffs = False)
+            complete_part = Knockout.reorder_participants(participants[:-n], account_for_playoffs = False)
+            return playoffs_part + complete_part
+
+        # Establish the order so that the first are matched against the last.
         result = [None] * len(participants)
         participants = list(participants)
         for pidx in range(len(participants)):
@@ -509,8 +534,8 @@ class Knockout(Mode):
         assert len(participants) >= 2
         levels = math.ceil(math.log2(len(participants)))
 
-        # Re-order the participants so that the first (highest ranked) are matched against the last (lowest ranked).
-        participants = Knockout.reorder_participants(participants)
+        # Re-order the participants so that the first (highest ranked) are matched against the last (lowest ranked), also accounting for playoffs.
+        participants = Knockout.reorder_participants(participants, account_for_playoffs = True)
 
         # Identify fixtures by their path (which, in a binary tree, corresponds to the index of the node in binary representation, starting from `1` for the root).
         remaining_participants = list(participants)
