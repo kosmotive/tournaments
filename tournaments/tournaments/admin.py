@@ -51,10 +51,10 @@ class TournamentAdmin(admin.ModelAdmin):
 @admin.register(models.Fixture)
 class FixtureAdmin(admin.ModelAdmin):
 
-    list_display = ('id', 'tournament', 'mode', 'level', 'position', 'player1', 'player2', 'score')
+    list_display = ('id', 'tournament', 'mode', 'level', 'extras', 'player1', 'player2', 'score')
     list_filter  = ('mode__tournament',)
 
-    ordering = ('mode__tournament', 'mode', 'level', 'position')
+    ordering = ('mode__tournament', 'mode', 'level')
 
     def tournament(self, fixture):
         url = reverse('admin:tournaments_tournament_change', args=(fixture.mode.tournament.pk,))

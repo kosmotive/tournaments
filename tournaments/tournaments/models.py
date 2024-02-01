@@ -616,13 +616,13 @@ class Knockout(Mode):
 
 class Fixture(models.Model):
 
-    mode     = models.ForeignKey('Mode', on_delete = models.CASCADE, related_name = 'fixtures')
-    level    = models.PositiveSmallIntegerField()
-    position = models.PositiveSmallIntegerField()
-    player1  = models.ForeignKey('auth.User', on_delete = models.PROTECT, related_name = 'fixtures1', null = True)
-    player2  = models.ForeignKey('auth.User', on_delete = models.PROTECT, related_name = 'fixtures2', null = True)
-    score1   = models.PositiveSmallIntegerField(null = True)
-    score2   = models.PositiveSmallIntegerField(null = True)
+    mode    = models.ForeignKey('Mode', on_delete = models.CASCADE, related_name = 'fixtures')
+    level   = models.PositiveSmallIntegerField()
+    extras  = models.JSONField(default = list)
+    player1 = models.ForeignKey('auth.User', on_delete = models.PROTECT, related_name = 'fixtures1', null = True)
+    player2 = models.ForeignKey('auth.User', on_delete = models.PROTECT, related_name = 'fixtures2', null = True)
+    score1  = models.PositiveSmallIntegerField(null = True)
+    score2  = models.PositiveSmallIntegerField(null = True)
     confirmations = models.ManyToManyField('auth.User', related_name = 'fixture_confirmations')
 
     class Meta:
