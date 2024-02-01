@@ -6,7 +6,6 @@
 /tournaments/db.sqlite3
 /tournaments/static-deployed
 /tournaments/logs
-/tournaments/*/migrations
 __pycache__
 *.pyc
 .coverage
