@@ -364,7 +364,7 @@ class TournamentProgressView(SingleObjectMixin, VersionInfoMixin, AlertMixin, Vi
             try:
                 fixture.full_clean()
             except ValidationError as error:
-                request.session['alert'] = dict(status = 'danger', text = error)
+                request.session['alert'] = dict(status = 'danger', text = str(error))
                 return redirect('tournament-progress', pk = self.object.id)
 
             fixture.save()

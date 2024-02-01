@@ -20,7 +20,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='fixture',
             name='extras',
-            field=models.JSONField(default=list),
+            field=models.JSONField(blank=True, default=list),
         ),
         migrations.RunPython(migrate_position_to_extras),
         migrations.RemoveField(

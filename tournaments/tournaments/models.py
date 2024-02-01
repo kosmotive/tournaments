@@ -260,7 +260,7 @@ def unwrap_list(items):
 class Mode(PolymorphicModel):
 
     identifier = models.SlugField()
-    name = models.CharField(max_length = 100, blank = True)
+    name       = models.CharField(max_length = 100, blank = True)
     tournament = models.ForeignKey('Tournament', on_delete = models.CASCADE, related_name = 'stages')
     played_by  = models.JSONField(default = list, blank = True)
 
@@ -456,7 +456,6 @@ class Groups(Mode):
                     Fixture.objects.create(
                         mode     = self,
                         level    = level,
-                        position = position,
                         player1  = group[pidx1],
                         player2  = group[pidx2],
                     )
@@ -547,17 +546,17 @@ class Knockout(Mode):
             player2 = None if fixture_path * 2 <  last_fixture_path else remaining_participants.pop()
 
             Fixture.objects.create(
-                mode     = self,
-                level    = level,
-                position = fixture_path,
-                player1  = player1,
-                player2  = player2)
+                mode    = self,
+                level   = level,
+                extras  = dict(position = fixture_path),
+                player1 = player1,
+                player2 = player2)
 
         assert len(remaining_participants) == 0, remaining_participants
 
     def get_parent_fixture(self, fixture):
-        if fixture.position == 1: return None
-        return self.fixtures.get(position = fixture.position // 2)
+        if fixture.extras['position'] == 1: return None
+        return self.fixtures.get(extras = dict(position = fixture.extras['position'] // 2))
 
     def propagate(self, fixture):
         assert fixture.mode.id == self.id
@@ -569,7 +568,7 @@ class Knockout(Mode):
             return False
 
         # Propagate to either side of the parent fixture.
-        if fixture.position % 2 == 0:
+        if fixture.extras['position'] % 2 == 0:
             if parent_fixture.player1 is not None:
                 return False
             parent_fixture.player1 = fixture.winner
@@ -618,7 +617,7 @@ class Fixture(models.Model):
 
     mode    = models.ForeignKey('Mode', on_delete = models.CASCADE, related_name = 'fixtures')
     level   = models.PositiveSmallIntegerField()
-    extras  = models.JSONField(default = list)
+    extras  = models.JSONField(default = list, blank = True)
     player1 = models.ForeignKey('auth.User', on_delete = models.PROTECT, related_name = 'fixtures1', null = True)
     player2 = models.ForeignKey('auth.User', on_delete = models.PROTECT, related_name = 'fixtures2', null = True)
     score1  = models.PositiveSmallIntegerField(null = True)

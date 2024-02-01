@@ -684,7 +684,7 @@ class TournamentProgressViewTests(TestCase):
         self.assertContains(response, '<h2>Preliminaries <small class="text-muted">Current Stage</small></h2>')
 
     def test_post_open(self):
-        fixture = models.Fixture.objects.create(mode = self.tournament1.stages.all()[0], level = 0, position = 0)
+        fixture = models.Fixture.objects.create(mode = self.tournament1.stages.all()[0], level = 0)
         response = self.client.post(
             reverse('tournament-progress', kwargs = dict(pk = self.tournament1.id)),
             dict(
@@ -726,7 +726,7 @@ class TournamentProgressViewTests(TestCase):
         self.test_open() ## start the tournament
         self.client.force_login(self.users[0])
         next_stage = self.tournament1.stages.all()[1]
-        fixture = models.Fixture.objects.create(mode = next_stage, level = 0, position = 0)
+        fixture = models.Fixture.objects.create(mode = next_stage, level = 0)
         response = self.client.post(
             reverse('tournament-progress', kwargs = dict(pk = self.tournament1.id)),
             dict(

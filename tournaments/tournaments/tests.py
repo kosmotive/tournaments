@@ -952,7 +952,7 @@ class FixtureTest(TestCase):
                 password =  'password')
             for user_idx in range(2)
         ]
-        self.fixture = Fixture.objects.create(mode = self.knockout, level = 0, position = 0, player1 = self.players[0], player2 = self.players[1])
+        self.fixture = Fixture.objects.create(mode = self.knockout, level = 0, player1 = self.players[0], player2 = self.players[1])
 
     def test_score(self):
         self.assertEqual(self.fixture.score, (None, None))
