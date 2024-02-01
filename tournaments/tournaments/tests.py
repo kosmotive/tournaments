@@ -405,6 +405,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'draw_count': 0,
                     'points': 0,
                     'matches': 0,
+                    'balance': 0,
                 },
                 {
                     'participant': User.objects.get(id = 3),
@@ -413,6 +414,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'draw_count': 0,
                     'points': 0,
                     'matches': 0,
+                    'balance': 0,
                 },
                 {
                     'participant': User.objects.get(id = 1),
@@ -421,6 +423,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'draw_count': 0,
                     'points': 0,
                     'matches': 0,
+                    'balance': 0,
                 },
             ],
             [
@@ -431,6 +434,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'draw_count': 0,
                     'points': 0,
                     'matches': 0,
+                    'balance': 0,
                 },
                 {
                     'participant': User.objects.get(id = 2),
@@ -439,6 +443,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'draw_count': 0,
                     'points': 0,
                     'matches': 0,
+                    'balance': 0,
                 },
             ],
         ]
@@ -456,14 +461,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'draw_count': 0,
                     'points': 3,
                     'matches': 1,
-                },
-                {
-                    'participant': User.objects.get(id = 3),
-                    'win_count': 0,
-                    'loss_count': 1,
-                    'draw_count': 0,
-                    'points': 0,
-                    'matches': 1,
+                    'balance': 1,
                 },
                 {
                     'participant': User.objects.get(id = 1),
@@ -472,6 +470,16 @@ class GroupsTest(ModeTestBase, TestCase):
                     'draw_count': 0,
                     'points': 0,
                     'matches': 0,
+                    'balance': 0,
+                },
+                {
+                    'participant': User.objects.get(id = 3),
+                    'win_count': 0,
+                    'loss_count': 1,
+                    'draw_count': 0,
+                    'points': 0,
+                    'matches': 1,
+                    'balance': -1,
                 },
             ],
             [
@@ -482,6 +490,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'draw_count': 0,
                     'points': 0,
                     'matches': 0,
+                    'balance': 0,
                 },
                 {
                     'participant': User.objects.get(id = 2),
@@ -490,6 +499,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'draw_count': 0,
                     'points': 0,
                     'matches': 0,
+                    'balance': 0,
                 },
             ],
         ]
@@ -507,6 +517,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'draw_count': 1,
                     'points': 4,
                     'matches': 2,
+                    'balance': 1,
                 },
                 {
                     'participant': User.objects.get(id = 1),
@@ -515,6 +526,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'draw_count': 1,
                     'points': 1,
                     'matches': 1,
+                    'balance': 0,
                 },
                 {
                     'participant': User.objects.get(id = 3),
@@ -523,6 +535,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'draw_count': 0,
                     'points': 0,
                     'matches': 1,
+                    'balance': -1,
                 },
             ],
             [
@@ -533,6 +546,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'draw_count': 0,
                     'points': 0,
                     'matches': 0,
+                    'balance': 0,
                 },
                 {
                     'participant': User.objects.get(id = 2),
@@ -541,6 +555,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'draw_count': 0,
                     'points': 0,
                     'matches': 0,
+                    'balance': 0,
                 },
             ],
         ]
@@ -552,20 +567,22 @@ class GroupsTest(ModeTestBase, TestCase):
         expected_standings = [
             [
                 {
-                    'participant': User.objects.get(id = 5),
-                    'win_count': 1,
-                    'loss_count': 0,
-                    'draw_count': 1,
-                    'points': 4,
-                    'matches': 2,
-                },
-                {
                     'participant': User.objects.get(id = 1),
                     'win_count': 1,
                     'loss_count': 0,
                     'draw_count': 1,
                     'points': 4,
                     'matches': 2,
+                    'balance': 3,
+                },
+                {
+                    'participant': User.objects.get(id = 5),
+                    'win_count': 1,
+                    'loss_count': 0,
+                    'draw_count': 1,
+                    'points': 4,
+                    'matches': 2,
+                    'balance': 1,
                 },
                 {
                     'participant': User.objects.get(id = 3),
@@ -574,6 +591,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'draw_count': 0,
                     'points': 0,
                     'matches': 2,
+                    'balance': -4,
                 },
             ],
             [
@@ -584,6 +602,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'draw_count': 0,
                     'points': 0,
                     'matches': 0,
+                    'balance': 0,
                 },
                 {
                     'participant': User.objects.get(id = 2),
@@ -592,6 +611,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'draw_count': 0,
                     'points': 0,
                     'matches': 0,
+                    'balance': 0,
                 },
             ],
         ]
@@ -602,20 +622,22 @@ class GroupsTest(ModeTestBase, TestCase):
         expected_standings = [
             [
                 {
-                    'participant': User.objects.get(id = 5),
-                    'win_count': 1,
-                    'loss_count': 0,
-                    'draw_count': 1,
-                    'points': 4,
-                    'matches': 2,
-                },
-                {
                     'participant': User.objects.get(id = 1),
                     'win_count': 1,
                     'loss_count': 0,
                     'draw_count': 1,
                     'points': 4,
                     'matches': 2,
+                    'balance': 3,
+                },
+                {
+                    'participant': User.objects.get(id = 5),
+                    'win_count': 1,
+                    'loss_count': 0,
+                    'draw_count': 1,
+                    'points': 4,
+                    'matches': 2,
+                    'balance': 1,
                 },
                 {
                     'participant': User.objects.get(id = 3),
@@ -624,6 +646,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'draw_count': 0,
                     'points': 0,
                     'matches': 2,
+                    'balance': -4,
                 },
             ],
             [
@@ -634,6 +657,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'draw_count': 1,
                     'points': 1,
                     'matches': 1,
+                    'balance': 0,
                 },
                 {
                     'participant': User.objects.get(id = 2),
@@ -642,6 +666,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'draw_count': 1,
                     'points': 1,
                     'matches': 1,
+                    'balance': 0,
                 },
             ],
         ]
@@ -653,11 +678,11 @@ class GroupsTest(ModeTestBase, TestCase):
         mode = self.test_standings()
         expected_placements = [
             [
-                User.objects.get(id = 5),
+                User.objects.get(id = 1),
                 User.objects.get(id = 4),
             ],
             [
-                User.objects.get(id = 1),
+                User.objects.get(id = 5),
                 User.objects.get(id = 2),
             ],
             [

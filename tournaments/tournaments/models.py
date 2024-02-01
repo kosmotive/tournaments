@@ -407,7 +407,7 @@ def create_division_schedule(participants, with_returns = False):
 
 
 def get_stats(participant, filters = dict()):
-    row = dict(participant = participant, win_count = 0, loss_count = 0, draw_count = 0, matches = 0)
+    row = dict(participant = participant, win_count = 0, loss_count = 0, draw_count = 0, matches = 0, balance = 0)
     for fixture in participant.fixtures1.filter(**filters) | participant.fixtures2.filter(**filters):
 
         # Only account for confirmed scores.
@@ -426,6 +426,9 @@ def get_stats(participant, filters = dict()):
             row['win_count'] += 1
         elif scores[0] < scores[1]:
             row['loss_count'] += 1
+
+        # Account score balance.
+        row['balance'] += scores[0] - scores[1]
 
     return row
 
@@ -473,7 +476,7 @@ class Groups(Mode):
         standings = list()
         for group in self.groups_info:
             group_standings = [self.get_standings(participant) for participant in self.tournament.participants.filter(id__in = group)]
-            group_standings.sort(key = lambda row: (row['points'], row['matches'], row['participant'].id), reverse = True)
+            group_standings.sort(key = lambda row: (row['points'], row['balance'], row['matches'], row['participant'].id), reverse = True)
             standings.append(group_standings)
         return standings
 
