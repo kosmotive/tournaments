@@ -492,11 +492,6 @@ class Knockout(Mode):
 
     double_elimination = models.BooleanField(default = False)
 
-    def clean(self):
-        super(Knockout, self).clean()
-        if self.double_elimination:
-            raise ValidationError('Double elimination is not implemented yet.')
-
     @staticmethod
     def reorder_participants(participants, account_for_playoffs):
         """
@@ -532,6 +527,14 @@ class Knockout(Mode):
             result[pidx] = participants[i if j == 0 else -i - 1]
         return result
 
+    @property
+    def first_complete_level(self):
+        assert self.levels > 0, self.levels
+        if self.fixtures.filter(level = 0).count() == Knockout.get_level_size(0):
+            return 0
+        else:
+            return 1
+
     def create_fixtures(self, participants):
         assert len(participants) >= 2
         levels = math.ceil(math.log2(len(participants)))
@@ -551,38 +554,110 @@ class Knockout(Mode):
             Fixture.objects.create(
                 mode    = self,
                 level   = level,
-                extras  = dict(position = fixture_path),
+                extras  = dict(position = fixture_path, tree = 1),
                 player1 = player1,
                 player2 = player2)
 
+            # In double elimination mode, also create the second tree.
+            if self.double_elimination and player1 is None and player2 is None:
+                Fixture.objects.create(
+                    mode    = self,
+                    level   = level,
+                    extras  = dict(position = fixture_path, tree = 2))
+
+        # Assert that all participants were distributed.
         assert len(remaining_participants) == 0, remaining_participants
 
-    def get_parent_fixture(self, fixture):
-        if fixture.extras['position'] == 1: return None
-        return self.fixtures.get(extras = dict(position = fixture.extras['position'] // 2))
+        # In double elimination mode, create the final root node.
+        if self.double_elimination:
+            Fixture.objects.create(
+                mode    = self,
+                level   = levels,
+                extras  = dict(position = 0))
+
+    def get_parent_fixture(self, fixture, tree = 1):
+        """
+        Return the parent fixture in the knockout tree.
+        """
+        parent_position = fixture.extras['position'] // 2
+
+        # In single elimination mode, the parent node is always directly obtained.
+        if not self.double_elimination:
+            if fixture.extras['position'] == 1: return None
+            return self.fixtures.get(extras = dict(position = parent_position, tree = 1))
+
+        # In double elimination mode, ...
+        else:
+            # ... there is an extra root node, which the two trees are connected to (position = 0).
+            if fixture.extras['position'] == 1:
+                return self.fixtures.get(extras = dict(position = 0))
+
+            # ... and nodes can have a second parent node (the one in tree 2).
+            try:
+                return self.fixtures.get(extras = dict(position = parent_position, tree = tree))
+            except Fixture.DoesNotExist:
+                return None
 
     def propagate(self, fixture):
         assert fixture.mode.id == self.id
         assert fixture.winner is not None
-        parent_fixture = self.get_parent_fixture(fixture)
+        parent_fixture  = self.get_parent_fixture(fixture)
+        parent_fixture2 = None
 
         # There is nothing to propagate if `fixture` is the root of the binary tree.
         if parent_fixture is None:
             return False
 
-        # Propagate to either side of the parent fixture.
-        if fixture.extras['position'] % 2 == 0:
-            if parent_fixture.player1 is not None:
-                return False
-            parent_fixture.player1 = fixture.winner
-        else:
-            if parent_fixture.player2 is not None:
-                return False
-            parent_fixture.player2 = fixture.winner
+        # Keep track of whether anything was propagated.
+        propagated = False
+
+        # Propagate to either side of the parent fixture in the main tree.
+        if fixture.extras['tree'] == 1:
+            if fixture.extras['position'] % 2 == 0:
+                if parent_fixture.player1 is None:
+                    parent_fixture.player1 = fixture.winner
+                    propagated = True
+            else:
+                if parent_fixture.player2 is None:
+                    parent_fixture.player2 = fixture.winner
+                    propagated = True
+
+        # In double-elimination mode, ...
+        if self.double_elimination:
+
+            # ... if the level is the first complete, initialize the second tree.
+            if fixture.level == self.first_complete_level:
+                if fixture.extras['position'] % 2 == 0:
+                    if parent_fixture.player1 is None:
+                        parent_fixture.player1 = fixture.loser
+                        propagated = True
+                else:
+                    if parent_fixture.player2 is None:
+                        parent_fixture.player2 = fixture.loser
+                        propagated = True
+
+            # ... or propagate to/within the second tree.
+            else:
+                parent_fixture2 = self.get_parent_fixture(fixture, tree = 2)
+                if parent_fixture2 is not None:
+                    assert fixture.extras['tree'] in (1, 2), fixture.extras
+                    if fixture.extras['tree'] == 1:
+                        if parent_fixture2.player1 is None:
+                            parent_fixture2.player1 = fixture.loser
+                            propageted = True
+                    if fixture.extras['tree'] == 2:
+                        if parent_fixture2.player2 is None:
+                            parent_fixture2.player2 = fixture.winner
+                            propageted = True
 
         # If anything was propagated, then save.
-        parent_fixture.save()
-        return True
+        if propagated:
+            parent_fixture.save()
+            if parent_fixture2 is not None:
+                parent_fixture2.save()
+
+        # Return whether any updates were performed.
+        return propagated
 
     def update_fixtures(self):
         updates_performed = False
@@ -603,17 +678,22 @@ class Knockout(Mode):
         final_match = self.fixtures.all()[0]
         return [final_match.winner] + [fixture.loser for fixture in self.fixtures.all()]
 
+    @staticmethod
+    def get_level_size(level):
+        rlevel = self.levels - level
+        assert rlevel >= 1, level
+        return pow(2, rlevel)
+
     def get_level_name(self, level):
-        level = self.levels - level
-        assert level >= 1, level
-        if level == 1:
+        level_size = Knockout.get_level_size(level)
+        if level_size == 2:
             return 'Final'
-        if level == 2:
+        if level_size == 4:
             return 'Semifinals'
-        if level == 3:
+        if level_size == 8:
             return 'Quarter Finals'
         else:
-            return f'Last {pow(2, level)}'
+            return f'Last {level_size}'
 
 
 class Fixture(models.Model):
