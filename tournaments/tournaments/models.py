@@ -488,6 +488,19 @@ class Groups(Mode):
         return [[group[position]['participant'] for group in standings if position < len(group)] for position in range(max_group_size)]
 
 
+def is_power_of_two(val, ret_floor = False):
+    if np.issubdtype(type(val), np.integer):
+        val = int(val)
+    assert isinstance(val, int), type(val)
+    assert val >= 1, val
+    power_of_two_floor = 1 << (val.bit_length() - 1)
+    power_of_two = power_of_two_floor == val
+    if ret_floor:
+        return power_of_two, power_of_two_floor
+    else:
+        return power_of_two
+
+
 class Knockout(Mode):
 
     double_elimination = models.BooleanField(default = False)
@@ -504,8 +517,7 @@ class Knockout(Mode):
         if len(participants) == 0: return list()
 
         # Check whether the number of participants is a power of 2.
-        power_of_two_floor = 1 << (len(participants).bit_length() - 1)
-        power_of_two = (power_of_two_floor == len(participants))
+        power_of_two, power_of_two_floor = is_power_of_two(len(participants), ret_floor = True)
 
         # Account for playoffs.
         if account_for_playoffs and not power_of_two:
@@ -527,10 +539,14 @@ class Knockout(Mode):
             result[pidx] = participants[i if j == 0 else -i - 1]
         return result
 
-    @property
-    def first_complete_level(self):
-        assert self.levels > 0, self.levels
-        if self.fixtures.filter(level = 0).count() == Knockout.get_level_size(0):
+    @staticmethod
+    def get_first_complete_level(num_fixtures):
+        """
+        Tells the first complete level of the knockout tree.
+
+        This is level 0 if and only if the number of fixtures plus 1 is a power of two (e.g., 3, 7), and level 1 otherwise.
+        """
+        if is_power_of_two(num_fixtures + 1):
             return 0
         else:
             return 1
@@ -545,6 +561,7 @@ class Knockout(Mode):
         # Identify fixtures by their path (which, in a binary tree, corresponds to the index of the node in binary representation, starting from `1` for the root).
         remaining_participants = list(participants)
         last_fixture_path = len(participants) - 1
+        first_complete_level = Knockout.get_first_complete_level(last_fixture_path)
         for fixture_path in range(1, last_fixture_path + 1):
             level = levels - int(math.log2(fixture_path)) - 1
 
@@ -559,7 +576,8 @@ class Knockout(Mode):
                 player2 = player2)
 
             # In double elimination mode, also create the second tree.
-            if self.double_elimination and player1 is None and player2 is None:
+            #if self.double_elimination and player1 is None and player2 is None:
+            if self.double_elimination and len(participants) >= 4 and level - 1 == first_complete_level:
                 Fixture.objects.create(
                     mode    = self,
                     level   = level,
@@ -626,7 +644,7 @@ class Knockout(Mode):
         if self.double_elimination:
 
             # ... if the level is the first complete, initialize the second tree.
-            if fixture.level == self.first_complete_level:
+            if fixture.level == Knockout.get_first_complete_level(self.fixtures.count()):
                 if fixture.extras['position'] % 2 == 0:
                     if parent_fixture.player1 is None:
                         parent_fixture.player1 = fixture.loser

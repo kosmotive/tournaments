@@ -10,6 +10,7 @@ from tournaments.models import (
     parse_placements_str,
     get_stats,
     unwrap_list,
+    is_power_of_two,
     Tournament,
     Participation,
     Mode,
@@ -151,6 +152,35 @@ class parse_placements_str_Test(TestCase):
         actual = parse_placements_str('stage.placements[1::-1]')
         self.assertEqual(actual[0], 'stage')
         self.assertEqual(self.placements[actual[1]], [1, 0])
+
+
+class is_power_of_two_Test(TestCase):
+
+    def setUp(self):
+        self.positives = np.array([1, 2, 4, 8, 16, 32, 64])
+
+    def test_True(self):
+        for val in self.positives:
+            with self.subTest(val = val):
+
+                ret = is_power_of_two(val)
+                self.assertTrue(ret)
+
+                ret = is_power_of_two(val, ret_floor = True)
+                self.assertTrue(ret[0])
+                self.assertEqual(ret[1], val)
+
+    def test_False(self):
+        for val in range(1, max(self.positives)):
+            if val not in self.positives:
+                with self.subTest(val = val):
+
+                    ret = is_power_of_two(val)
+                    self.assertFalse(ret)
+
+                    ret = is_power_of_two(val, ret_floor = True)
+                    self.assertFalse(ret[0])
+                    self.assertEqual(ret[1], self.positives[self.positives < val].max())
 
 
 def assert_division_schedule_validity(test, schedule, with_returns):
