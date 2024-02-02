@@ -569,7 +569,7 @@ class Knockout(Mode):
         assert len(remaining_participants) == 0, remaining_participants
 
         # In double elimination mode, create the final root node.
-        if self.double_elimination:
+        if self.double_elimination and len(participants) >= 4:
             Fixture.objects.create(
                 mode    = self,
                 level   = levels,

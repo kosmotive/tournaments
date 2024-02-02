@@ -227,10 +227,16 @@ class ModeTestBase:
     def confirm_fixture(self, *args, **kwargs):
         _confirm_fixture(self.participants, *args, **kwargs)
 
-    def group_fixtures_by_level(self, mode):
+    def group_fixtures_by_level(self, mode, **filters):
         actual_fixtures = dict()
         pid = lambda p: None if p is None else p.id
-        for fixture in mode.fixtures.all():
+        exclude_dict = dict()
+        for filter_key, filter_val in dict(filters).items():
+            if filter_key.endswith('__ne'):
+                exclude_dict[filter_key[:-4]] = filter_val
+                exclude_dict[filter_key[:-4] + '__isnull'] = False
+                del filters[filter_key]
+        for fixture in mode.fixtures.filter(**filters).exclude(**exclude_dict).all():
             actual_fixtures.setdefault(fixture.level, list())
             actual_fixtures[fixture.level].append((pid(fixture.player1), pid(fixture.player2)))
         return actual_fixtures
@@ -744,6 +750,18 @@ class KnockoutTest(ModeTestBase, TestCase):
 
         return mode
 
+    def test_create_fixtures_3participants(self):
+        mode = Knockout.objects.create(tournament = self.tournament)
+        mode.create_fixtures(self.participants[:3])
+
+        # Verify fixtures.
+        actual_fixtures = self.group_fixtures_by_level(mode)
+        expected_fixtures = {
+            0: [(3, 2)],
+            1: [(None, 1)]
+        }
+        self.assertEqual(actual_fixtures, expected_fixtures)
+
     def test_create_fixtures_4participants(self):
         mode = Knockout.objects.create(tournament = self.tournament)
         mode.create_fixtures(self.participants[:4])
@@ -963,6 +981,99 @@ class KnockoutTest(ModeTestBase, TestCase):
     def test_placements_none(self):
         mode = Knockout.objects.create(tournament = self.tournament)
         self.assertIsNone(mode.placements)
+
+    def test_create_fixtures_double_elimination_2participants(self):
+        mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
+        mode.create_fixtures(self.participants[:2])
+
+        # Verify fixtures.
+        actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
+        actual_fixtures2 = self.group_fixtures_by_level(mode, extras__tree = 2)
+        expected_fixtures1 = {
+            0: [(2, 1)],
+        }
+        expected_fixtures2 = {
+        }
+        self.assertEqual(actual_fixtures1, expected_fixtures1)
+        self.assertEqual(actual_fixtures2, expected_fixtures2)
+
+        return mode
+
+    def test_create_fixtures_double_elimination_3participants(self):
+        mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
+        mode.create_fixtures(self.participants[:3])
+
+        # Verify fixtures.
+        actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
+        actual_fixtures2 = self.group_fixtures_by_level(mode, extras__tree = 2)
+        expected_fixtures1 = {
+            0: [(3, 2)],
+            1: [(None, 1)]
+        }
+        expected_fixtures2 = {
+        }
+        self.assertEqual(actual_fixtures1, expected_fixtures1)
+        self.assertEqual(actual_fixtures2, expected_fixtures2)
+
+        return mode
+
+    def test_create_fixtures_double_elimination_4participants(self):
+        mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
+        mode.create_fixtures(self.participants[:4])
+
+        # Verify fixtures.
+        actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
+        actual_fixtures2 = self.group_fixtures_by_level(mode, extras__tree = 2)
+        expected_fixtures1 = {
+            0: [(3, 2), (4, 1)],
+            1: [(None, None)], # winner of 1/0/1 vs. winner of 1/0/2
+            2: [(None, None)], # winner of 1/1/1 vs. winner of 2/1/1
+        }
+        expected_fixtures2 = {
+            1: [(None, None)], # loser of 1/0/1 vs. loser of 1/0/2
+        }
+        self.assertEqual(actual_fixtures1, expected_fixtures1)
+        self.assertEqual(actual_fixtures2, expected_fixtures2)
+
+    def test_create_fixtures_double_elimination_5participants(self):
+        mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
+        mode.create_fixtures(self.participants[:5])
+
+        # Verify fixtures.
+        actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
+        actual_fixtures2 = self.group_fixtures_by_level(mode, extras__tree = 2)
+        expected_fixtures1 = {
+            0: [(5, 4)], # playoffs
+            1: [(None, 2), (3, 1)],
+            2: [(None, None)], # winner of 1/1/1 vs. winner of 1/1/2
+            3: [(None, None)], # winner of 1/2/1 vs. winner of 2/2/1
+        }
+        expected_fixtures2 = {
+            2: [(None, None)], # loser of 1/1/1 vs. loser of 1/1/2
+        }
+        self.assertEqual(actual_fixtures1, expected_fixtures1)
+        self.assertEqual(actual_fixtures2, expected_fixtures2)
+
+        return mode
+
+    def test_create_fixtures_double_elimination_6participants(self):
+        mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
+        mode.create_fixtures(self.participants[:6])
+
+        # Verify fixtures.
+        actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
+        actual_fixtures2 = self.group_fixtures_by_level(mode, extras__tree = 2)
+        expected_fixtures1 = {
+            0: [(5, 4), (6, 3)], # playoffs
+            1: [(None, None), (2, 1)],
+            2: [(None, None)], # winner of 1/1/1 vs. winner of 1/1/2
+            3: [(None, None)], # winner of 1/2/1 vs. winner of 2/2/1
+        }
+        expected_fixtures2 = {
+            2: [(None, None)], # loser of 1/1/1 vs. loser of 1/1/2
+        }
+        self.assertEqual(actual_fixtures1, expected_fixtures1)
+        self.assertEqual(actual_fixtures2, expected_fixtures2)
 
 
 class FixtureTest(TestCase):
