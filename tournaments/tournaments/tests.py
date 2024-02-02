@@ -1105,6 +1105,46 @@ class KnockoutTest(ModeTestBase, TestCase):
         self.assertEqual(actual_fixtures1, expected_fixtures1)
         self.assertEqual(actual_fixtures2, expected_fixtures2)
 
+    def test_create_fixtures_double_elimination_7participants(self):
+        mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
+        mode.create_fixtures(self.participants[:7])
+
+        # Verify fixtures.
+        actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
+        actual_fixtures2 = self.group_fixtures_by_level(mode, extras__tree = 2)
+        expected_fixtures1 = {
+            0: [(5, 4), (6, 3), (7, 2)], # playoffs
+            1: [(None, None), (None, 1)],
+            2: [(None, None)], # winner of 1/1/1 vs. winner of 1/1/2
+            3: [(None, None)], # winner of 1/2/1 vs. winner of 2/2/1
+        }
+        expected_fixtures2 = {
+            2: [(None, None)], # loser of 1/1/1 vs. loser of 1/1/2
+        }
+        self.assertEqual(actual_fixtures1, expected_fixtures1)
+        self.assertEqual(actual_fixtures2, expected_fixtures2)
+
+    def test_create_fixtures_double_elimination_8participants(self):
+        mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
+        mode.create_fixtures(self.participants[:8])
+
+        # Verify fixtures.
+        actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
+        actual_fixtures2 = self.group_fixtures_by_level(mode, extras__tree = 2)
+        expected_fixtures1 = {
+            0: [(5, 4), (6, 3), (7, 2), (8, 1)],
+            1: [(None, None), (None, None)], # (winner of 1/0/1 vs. winner of 1/0/2), and (winner of 1/0/3 vs. winner of 1/0/4)
+            2: [(None, None)], # winner of 1/1/1 vs. winner of 1/1/2
+            4: [(None, None)], # winner of 1/2/1 vs. winner of 2/2/1
+        }
+        expected_fixtures2 = {
+            1: [(None, None), (None, None)], # (loser of 1/0/1 vs. loser of 1/0/2), and (loser of 1/0/3 vs. loser of 1/0/4)
+            2: [(None, None), (None, None)], # (loser of 1/1/1 vs. winner of 2/1/1), and (loser of 1/1/2 vs. winner of 2/1/2)
+            3: [(None, None)], # winner of 2/2/1 vs. winner of 2/2/2
+        }
+        self.assertEqual(actual_fixtures1, expected_fixtures1)
+        self.assertEqual(actual_fixtures2, expected_fixtures2)
+
 
 class FixtureTest(TestCase):
 
