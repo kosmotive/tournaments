@@ -552,127 +552,102 @@ class Knockout(Mode):
             return 1
 
     def create_fixtures(self, participants):
+        """
+        Creates the fixtures of the knockout tree.
+
+        In single elimination mode, there is only the main tree, which is a binary tree.
+        We count the levels of the binary tree from bottom to up (starting with level 0).
+        The binary tree is complete, except for layer 0, which may be incomplete.
+        An incomplete layer 0 corresponds to playoffs.
+        Due to that structure of the main tree, the fixtures of the main tree are fully identified by their *position* within the tree.
+        Here, the *position* is the index of the node in binary representation, starting counting from 1 for the root node.
+
+        In double elimination mode, an additional tree is added, which partially overlaps with the main tree and is not binary.
+        Also, an additional root node is added, which connects the roots of the two trees (identified by position 0).
+        """
         assert len(participants) >= 2
         levels = math.ceil(math.log2(len(participants)))
 
         # Re-order the participants so that the first (highest ranked) are matched against the last (lowest ranked), also accounting for playoffs.
         participants = Knockout.reorder_participants(participants, account_for_playoffs = True)
 
-        # Identify fixtures by their path (which, in a binary tree, corresponds to the index of the node in binary representation, starting from `1` for the root).
+        # Build the main tree (embedding the corresponding propagation graph).
         remaining_participants = list(participants)
-        last_fixture_path = len(participants) - 1
-        first_complete_level = Knockout.get_first_complete_level(last_fixture_path)
-        for fixture_path in range(1, last_fixture_path + 1):
-            level = levels - int(math.log2(fixture_path)) - 1
+        last_fixture_position  = len(participants) - 1
+        for fixture_position in range(1, last_fixture_position + 1):
+            level = levels - int(math.log2(fixture_position)) - 1
 
-            player1 = None if fixture_path * 2 <= last_fixture_path else remaining_participants.pop()
-            player2 = None if fixture_path * 2 <  last_fixture_path else remaining_participants.pop()
+            player1 = None if fixture_position * 2 <= last_fixture_position else remaining_participants.pop()
+            player2 = None if fixture_position * 2 <  last_fixture_position else remaining_participants.pop()
+
+            extras = dict(tree = 1, position = fixture_position)
+            parent_fixture = self.get_main_parent_fixture(fixture_position)
+            if parent_fixture is not None:
+                extras['propagate'] = dict(
+                    winner = dict(
+                        fixture_id  = parent_fixture.id,
+                        player_slot = 1 + fixture_position % 2,
+                    ),
+                )
 
             Fixture.objects.create(
                 mode    = self,
                 level   = level,
-                extras  = dict(position = fixture_path, tree = 1),
                 player1 = player1,
-                player2 = player2)
-
-            # In double elimination mode, also create the second tree.
-            #if self.double_elimination and player1 is None and player2 is None:
-            if self.double_elimination and len(participants) >= 4 and level - 1 == first_complete_level:
-                Fixture.objects.create(
-                    mode    = self,
-                    level   = level,
-                    extras  = dict(position = fixture_path, tree = 2))
+                player2 = player2,
+                extras  = extras,
+            )
 
         # Assert that all participants were distributed.
         assert len(remaining_participants) == 0, remaining_participants
 
-        # In double elimination mode, create the final root node.
+        # In double elimination mode, add the second tree.
         if self.double_elimination and len(participants) >= 4:
-            Fixture.objects.create(
-                mode    = self,
-                level   = levels,
-                extras  = dict(position = 0))
 
-    def get_parent_fixture(self, fixture, tree = 1):
+            first_complete_level = Knockout.get_first_complete_level(last_fixture_path)
+            first_tree2_level = self.create_tree2_level(first_complete_level + 1)
+
+    def get_main_parent_fixture(self, fixture_position):
         """
-        Return the parent fixture in the knockout tree.
+        Return the parent fixture in the main knockout tree.
         """
-        parent_position = fixture.extras['position'] // 2
 
-        # In single elimination mode, the parent node is always directly obtained.
-        if not self.double_elimination:
-            if fixture.extras['position'] == 1: return None
-            return self.fixtures.get(extras = dict(position = parent_position, tree = 1))
-
-        # In double elimination mode, ...
-        else:
-            # ... there is an extra root node, which the two trees are connected to (position = 0).
-            if fixture.extras['position'] == 1:
-                return self.fixtures.get(extras = dict(position = 0))
-
-            # ... and nodes can have a second parent node (the one in tree 2).
+        # In double elimination mode, there can be an extra root node.
+        if fixture_position == 1:
             try:
-                return self.fixtures.get(extras = dict(position = parent_position, tree = tree))
+                return self.fixtures.get(extras = dict(position = 0))
             except Fixture.DoesNotExist:
                 return None
 
+        # Other parent nodes are directly obtained due to the binary tree structure.
+        else:
+            return self.fixtures.get(extras__tree = 1, extras__position = fixture_position // 2)
+
+    @staticmethod
+    def _propagate(src_fixture, src_slot, dst_fixture, dst_player_slot):
+        player = getattr(fixture, src_slot, None)
+        assert player is not None
+        dst_attr = 'player' + dst_player_slot
+        if getattr(dst_fixture, dst_attr) is not None:
+            return False
+        else:
+            setattr(dst_fixture, dst_attr, player)
+            dst_fixture.save()
+            return True
+        
+
     def propagate(self, fixture):
         assert fixture.mode.id == self.id
-        assert fixture.winner is not None
-        parent_fixture  = self.get_parent_fixture(fixture)
-        parent_fixture2 = None
-
-        # There is nothing to propagate if `fixture` is the root of the binary tree.
-        if parent_fixture is None:
-            return False
 
         # Keep track of whether anything was propagated.
         propagated = False
 
-        # Propagate to either side of the parent fixture in the main tree.
-        if fixture.extras['tree'] == 1:
-            if fixture.extras['position'] % 2 == 0:
-                if parent_fixture.player1 is None:
-                    parent_fixture.player1 = fixture.winner
-                    propagated = True
-            else:
-                if parent_fixture.player2 is None:
-                    parent_fixture.player2 = fixture.winner
-                    propagated = True
-
-        # In double-elimination mode, ...
-        if self.double_elimination:
-
-            # ... if the level is the first complete, initialize the second tree.
-            if fixture.level == Knockout.get_first_complete_level(self.fixtures.count()):
-                if fixture.extras['position'] % 2 == 0:
-                    if parent_fixture.player1 is None:
-                        parent_fixture.player1 = fixture.loser
-                        propagated = True
-                else:
-                    if parent_fixture.player2 is None:
-                        parent_fixture.player2 = fixture.loser
-                        propagated = True
-
-            # ... or propagate to/within the second tree.
-            else:
-                parent_fixture2 = self.get_parent_fixture(fixture, tree = 2)
-                if parent_fixture2 is not None:
-                    assert fixture.extras['tree'] in (1, 2), fixture.extras
-                    if fixture.extras['tree'] == 1:
-                        if parent_fixture2.player1 is None:
-                            parent_fixture2.player1 = fixture.loser
-                            propageted = True
-                    if fixture.extras['tree'] == 2:
-                        if parent_fixture2.player2 is None:
-                            parent_fixture2.player2 = fixture.winner
-                            propageted = True
-
-        # If anything was propagated, then save.
-        if propagated:
-            parent_fixture.save()
-            if parent_fixture2 is not None:
-                parent_fixture2.save()
+        # Propagate
+        propagate = fixture.extras.get('propagate', dict())
+        for slot_name in propagate.keys():
+            dst_fixture = self.fixtures.get(id = propagate[slot_name]['fixture_id'])
+            _propagated = Knockout._propagate(fixture, slot_name, dst_fixture, propagate[slot_name]['player_slot'])
+            propagated  = propagated or _propagated
 
         # Return whether any updates were performed.
         return propagated

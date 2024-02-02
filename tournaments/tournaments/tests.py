@@ -1134,8 +1134,8 @@ class KnockoutTest(ModeTestBase, TestCase):
         expected_fixtures1 = {
             0: [(5, 4), (6, 3), (7, 2), (8, 1)],
             1: [(None, None), (None, None)], # (winner of 1/0/1 vs. winner of 1/0/2), and (winner of 1/0/3 vs. winner of 1/0/4)
-            2: [(None, None)], # winner of 1/1/1 vs. winner of 1/1/2
-            4: [(None, None)], # winner of 1/2/1 vs. winner of 2/2/1
+            3: [(None, None)], # winner of 1/1/1 vs. winner of 1/1/2
+            4: [(None, None)], # winner of 1/3/1 vs. winner of 2/3/1
         }
         expected_fixtures2 = {
             1: [(None, None), (None, None)], # (loser of 1/0/1 vs. loser of 1/0/2), and (loser of 1/0/3 vs. loser of 1/0/4)
