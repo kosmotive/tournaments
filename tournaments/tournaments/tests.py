@@ -1056,11 +1056,12 @@ class KnockoutTest(ModeTestBase, TestCase):
         actual_fixtures2 = self.group_fixtures_by_level(mode, extras__tree = 2)
         expected_fixtures1 = {
             0: [(3, 2), (4, 1)],
-            1: [(None, None)], # winner of 1/0/1 vs. winner of 1/0/2
-            2: [(None, None)], # winner of 1/1/1 vs. winner of 2/1/1
+            1: [(None, None)],
+            3: [(None, None)],
         }
         expected_fixtures2 = {
-            1: [(None, None)], # loser of 1/0/1 vs. loser of 1/0/2
+            1: [(None, None)],
+            2: [(None, None)],
         }
         self.assertEqual(actual_fixtures1, expected_fixtures1)
         self.assertEqual(actual_fixtures2, expected_fixtures2)
