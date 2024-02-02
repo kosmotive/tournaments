@@ -572,10 +572,12 @@ class Knockout(Mode):
         participants = Knockout.reorder_participants(participants, account_for_playoffs = True)
 
         # In double elimination mode, add the additional root node.
+        last_fixture_position = len(participants) - 1
+        first_complete_level  = Knockout.get_first_complete_level(last_fixture_position)
         if self.double_elimination and len(participants) >= 4:
             double_elimination_root_fixture = Fixture.objects.create(
                 mode    = self,
-                level   = 1 + (levels - 1) * 2,
+                level   = first_complete_level + 1 + (levels - 1 - first_complete_level) * 2,
                 player1 = None,
                 player2 = None,
                 extras  = dict(position = 0),
@@ -583,7 +585,6 @@ class Knockout(Mode):
 
         # Build the main tree (embedding the corresponding propagation graph).
         remaining_participants = list(participants)
-        last_fixture_position  = len(participants) - 1
         tree1_levels, first_tree1_level = list(), -1
         for fixture_position in range(1, last_fixture_position + 1):
             level = levels - int(math.log2(fixture_position)) - 1
@@ -621,19 +622,17 @@ class Knockout(Mode):
         # In double elimination mode, add the second tree.
         if self.double_elimination and len(participants) >= 4:
 
-            # Determine list of complete levels.
-            first_complete_level = Knockout.get_first_complete_level(last_fixture_position)
-            complete_tree1_levels = tree1_levels[first_complete_level:]
-
             # For each complete level, except the first, add two levels of the second tree.
-            previous_tree2_level = [double_elimination_root_fixture]
-            for tree1_level in complete_tree1_levels[1:]:
+            complete_tree1_levels = tree1_levels[first_complete_level:]
+            previous_tree2_level  = [double_elimination_root_fixture]
+            for tree1_level in complete_tree1_levels[1:][::-1]:
 
                 # For each fixture of the main tree, create two fixtures in the second tree.
                 tree2_level = list()
                 for fidx, tree1_fixture in enumerate(tree1_level):
 
                     # Create the first fixture (second tree vs. main tree).
+#                    print('***', tree1_fixture.level, len(previous_tree2_level))
                     tree2_fixture1_extras = dict(
                         tree   = 2,
                         winner = dict(
@@ -644,12 +643,12 @@ class Knockout(Mode):
 
                     tree2_fixture1 = Fixture.objects.create(
                         mode   = self,
-                        level  = tree1_fixture.level * 2,
+                        level  = first_complete_level + (tree1_fixture.level - first_complete_level) * 2,
                         extras = tree2_fixture1_extras,
                     )
 
                     # Add propagation from the main to the second tree (and update the level).
-                    tree1_fixture.level = tree1_fixture.level * 2 - 1
+                    tree1_fixture.level = first_complete_level - 1 + (tree1_fixture.level - first_complete_level) * 2
                     tree1_fixture.extras['propagate']['loser'] = dict(
                         fixture_id  = tree2_fixture1.id,
                         player_slot = 2,
