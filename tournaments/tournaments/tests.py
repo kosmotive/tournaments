@@ -1513,6 +1513,7 @@ class TournamentTest(TestCase):
             Groups,
         ]
         self.assertEqual(actual_stages, expected_stages)
+        self.assertTrue(tournament.stages.all()[0].double_elimination)
         return tournament
 
     def test_delete(self):
