@@ -632,7 +632,6 @@ class Knockout(Mode):
                 for fidx, tree1_fixture in enumerate(tree1_level):
 
                     # Create the first fixture (second tree vs. main tree).
-#                    print('***', tree1_fixture.level, len(previous_tree2_level))
                     tree2_fixture1_extras = dict(
                         tree   = 2,
                         winner = dict(
@@ -700,6 +699,11 @@ class Knockout(Mode):
 
     @staticmethod
     def _propagate(src_fixture, src_slot, dst_fixture, dst_player_slot):
+        """
+        Propagate the value of the `src_slot` attribute of `src_fixture` to the corresponding `player` attribute of `dst_fixture`.
+
+        The corresponding `player` attribute is identified by `dst_play_slot`, which must be 1 or 2.
+        """
         player = getattr(src_fixture, src_slot, None)
         assert player is not None
         dst_attr = 'player' + str(dst_player_slot)
@@ -717,7 +721,7 @@ class Knockout(Mode):
         # Keep track of whether anything was propagated.
         propagated = False
 
-        # Propagate
+        # Propagate along the propagation graph.
         propagate = fixture.extras.get('propagate', dict())
         for slot_name in propagate.keys():
             dst_fixture = self.fixtures.get(id = propagate[slot_name]['fixture_id'])
