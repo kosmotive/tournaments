@@ -750,22 +750,43 @@ class Knockout(Mode):
         final_match = self.fixtures.all()[0]
         return [final_match.winner] + [fixture.loser for fixture in self.fixtures.all()]
 
-    @staticmethod
-    def get_level_size(level):
+    def get_level_size(self, level):
+        """
+        Return the maximum possible number of participants in a level of the main tree.
+
+        This is not the actual number of participants, but the maximum number based on the tree structure.
+        """
         rlevel = self.levels - level
-        assert rlevel >= 1, level
-        return pow(2, rlevel)
+        assert rlevel >= 1, f'level={level}, self.levels={self.levels}'
+        if not self.double_elimination:
+            return pow(2, rlevel)
+        else:
+            return pow(2, rlevel // 2)
 
     def get_level_name(self, level):
-        level_size = Knockout.get_level_size(level)
+        level_size = self.get_level_size(level)
         if level_size == 2:
-            return 'Final'
-        if level_size == 4:
-            return 'Semifinals'
-        if level_size == 8:
-            return 'Quarter Finals'
+            base_level_name = 'Final'
+        elif level_size == 4:
+            base_level_name = 'Semifinals'
+        elif level_size == 8:
+            base_level_name = 'Quarter Finals'
         else:
-            return f'Last {level_size}'
+            base_level_name = f'Last {level_size}'
+
+        if not self.double_elimination:
+            return base_level_name
+
+        else:
+            if level == 0:
+                return base_level_name
+            if level_size <= 2:
+                rlevel = self.levels - level
+                prefix = {3: '1st', 2: '2nd', 1: '3rd'}[rlevel]
+                return f'{prefix} Final Round'
+            else:
+                prefix = {1: '1st', 0: '2nd'}[level % 2]
+                return f'{prefix} {base_level_name}'
 
 
 class Fixture(models.Model):

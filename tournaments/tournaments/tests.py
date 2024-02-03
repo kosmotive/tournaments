@@ -1212,6 +1212,62 @@ class KnockoutTest(ModeTestBase, TestCase):
         self.assertEqual(actual_fixtures1, expected_fixtures1)
         self.assertEqual(actual_fixtures2, expected_fixtures2)
 
+    def test_get_level_size(self):
+        mode = Knockout.objects.create(tournament = self.tournament)
+        mode.create_fixtures(self.participants[:16])
+
+        self.assertEqual(mode.get_level_size(0), 16)
+        self.assertEqual(mode.get_level_size(1),  8)
+        self.assertEqual(mode.get_level_size(2),  4)
+        self.assertEqual(mode.get_level_size(3),  2)
+
+    def test_double_elimination_get_level_size(self):
+        mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
+        mode.create_fixtures(self.participants[:16])
+
+        self.assertEqual(mode.get_level_size(0), 16)
+        self.assertEqual(mode.get_level_size(1),  8)
+        self.assertEqual(mode.get_level_size(2),  8)
+        self.assertEqual(mode.get_level_size(3),  4)
+        self.assertEqual(mode.get_level_size(4),  4)
+        self.assertEqual(mode.get_level_size(5),  2)
+        self.assertEqual(mode.get_level_size(6),  2)
+        self.assertEqual(mode.get_level_size(7),  1)
+
+    def test_get_level_name_16participants(self):
+        mode = Knockout.objects.create(tournament = self.tournament)
+        mode.create_fixtures(self.participants[:16])
+
+        self.assertEqual(mode.get_level_name(0), 'Last 16')
+        self.assertEqual(mode.get_level_name(1), 'Quarter Finals')
+        self.assertEqual(mode.get_level_name(2), 'Semifinals')
+        self.assertEqual(mode.get_level_name(3), 'Final')
+
+    def test_get_level_name_10participants(self):
+        mode = Knockout.objects.create(tournament = self.tournament)
+        mode.create_fixtures(self.participants[:10])
+
+        self.assertEqual(mode.get_level_name(0), 'Playoffs')
+        self.assertEqual(mode.get_level_name(1), 'Quarter Finals')
+        self.assertEqual(mode.get_level_name(2), 'Semifinals')
+        self.assertEqual(mode.get_level_name(3), 'Final')
+
+    def test_double_elimination_get_level_name_16participants(self):
+        mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
+        mode.create_fixtures(self.participants[:16])
+
+        self.assertEqual(mode.get_level_name(0), 'Last 16')
+        self.assertEqual(mode.get_level_name(1), '1st Quarter Finals')
+        self.assertEqual(mode.get_level_name(2), '2nd Quarter Finals')
+        self.assertEqual(mode.get_level_name(3), '1st Semifinals')
+        self.assertEqual(mode.get_level_name(4), '2nd Semifinals')
+        self.assertEqual(mode.get_level_name(5), '1st Final Round')
+        self.assertEqual(mode.get_level_name(6), '2nd Final Round')
+        self.assertEqual(mode.get_level_name(7), '3rd Final Round')
+
+    def test_double_elimination_get_level_name_10participants(self):
+        raise NotImplementedError()
+
 
 class FixtureTest(TestCase):
 
