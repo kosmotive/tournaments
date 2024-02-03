@@ -1164,6 +1164,8 @@ class KnockoutTest(ModeTestBase, TestCase):
         self.assertEqual(actual_fixtures1, expected_fixtures1)
         self.assertEqual(actual_fixtures2, expected_fixtures2)
 
+        return mode
+
     def test_create_fixtures_double_elimination_9participants(self):
         mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
         mode.create_fixtures(self.participants[:9])
@@ -1276,6 +1278,157 @@ class KnockoutTest(ModeTestBase, TestCase):
         self.assertEqual(mode.get_level_name(4), '1st Final Round')
         self.assertEqual(mode.get_level_name(5), '2nd Final Round')
         self.assertEqual(mode.get_level_name(6), '3rd Final Round')
+
+    def test_double_elimination_get_level_name_8participants(self):
+        mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
+        mode.create_fixtures(self.participants[:8])
+
+        self.assertEqual(mode.get_level_name(0), 'Quarter Finals')
+        self.assertEqual(mode.get_level_name(1), '1st Semifinals')
+        self.assertEqual(mode.get_level_name(2), '2nd Semifinals')
+        self.assertEqual(mode.get_level_name(3), '1st Final Round')
+        self.assertEqual(mode.get_level_name(4), '2nd Final Round')
+        self.assertEqual(mode.get_level_name(5), '3rd Final Round')
+
+    def test_double_elimination_propagate(self):
+        mode = self.test_create_fixtures_double_elimination_8participants()
+
+        # Propagate quarter finals (let the user with the higher ID win).
+        quarterfinals = mode.fixtures.filter(level = 0)
+        for fixture in quarterfinals:
+            fixture.score = (fixture.player1.id, fixture.player2.id)
+            fixture.save()
+            propagate_ret = mode.propagate(fixture)
+            self.assertTrue(propagate_ret)
+
+        # Verify fixtures after quarter finals.
+        actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
+        actual_fixtures2 = self.group_fixtures_by_level(mode, extras__tree = 2)
+        expected_fixtures1 = {
+            0: [(5, 4), (6, 3), (7, 2), (8, 1)],
+            1: [(5, 6), (7, 8)],
+            3: [(None, None)],
+            5: [(None, None)],
+        }
+        expected_fixtures2 = {
+            1: [(4, 3), (2, 1)],
+            2: [(None, None), (None, None)],
+            3: [(None, None)],
+            4: [(None, None)],
+        }
+        self.assertEqual(actual_fixtures1, expected_fixtures1)
+        self.assertEqual(actual_fixtures2, expected_fixtures2)
+
+        # Propagate semifinals 1 (let the user with the higher ID win).
+        semifinals1 = mode.fixtures.filter(level = 1)
+        for fixture in semifinals1:
+            fixture.score = (fixture.player1.id, fixture.player2.id)
+            fixture.save()
+            propagate_ret = mode.propagate(fixture)
+            self.assertTrue(propagate_ret)
+
+        # Verify fixtures after semifinals 1.
+        actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
+        actual_fixtures2 = self.group_fixtures_by_level(mode, extras__tree = 2)
+        expected_fixtures1 = {
+            0: [(5, 4), (6, 3), (7, 2), (8, 1)],
+            1: [(5, 6), (7, 8)],
+            3: [(6, 8)],
+            5: [(None, None)],
+        }
+        expected_fixtures2 = {
+            1: [(4, 3), (2, 1)],
+            2: [(4, 5), (2, 7)],
+            3: [(None, None)],
+            4: [(None, None)],
+        }
+        self.assertEqual(actual_fixtures1, expected_fixtures1)
+        self.assertEqual(actual_fixtures2, expected_fixtures2)
+
+        # Propagate semifinals 2 (let the user with the higher ID win).
+        semifinals2 = mode.fixtures.filter(level = 2)
+        for fixture in semifinals2:
+            fixture.score = (fixture.player1.id, fixture.player2.id)
+            fixture.save()
+            propagate_ret = mode.propagate(fixture)
+            self.assertTrue(propagate_ret)
+
+        # Verify fixtures after semifinals 2.
+        actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
+        actual_fixtures2 = self.group_fixtures_by_level(mode, extras__tree = 2)
+        expected_fixtures1 = {
+            0: [(5, 4), (6, 3), (7, 2), (8, 1)],
+            1: [(5, 6), (7, 8)],
+            3: [(6, 8)],
+            5: [(None, None)],
+        }
+        expected_fixtures2 = {
+            1: [(4, 3), (2, 1)],
+            2: [(4, 5), (2, 7)],
+            3: [(5, 7)],
+            4: [(None, None)],
+        }
+        self.assertEqual(actual_fixtures1, expected_fixtures1)
+        self.assertEqual(actual_fixtures2, expected_fixtures2)
+
+        # Propagate final round 1 (let the user with the higher ID win).
+        finals1 = mode.fixtures.filter(level = 3)
+        for fixture in finals1:
+            fixture.score = (fixture.player1.id, fixture.player2.id)
+            fixture.save()
+            propagate_ret = mode.propagate(fixture)
+            self.assertTrue(propagate_ret)
+
+        # Verify fixtures after final round 1.
+        actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
+        actual_fixtures2 = self.group_fixtures_by_level(mode, extras__tree = 2)
+        expected_fixtures1 = {
+            0: [(5, 4), (6, 3), (7, 2), (8, 1)],
+            1: [(5, 6), (7, 8)],
+            3: [(6, 8)],
+            5: [(None, 8)],
+        }
+        expected_fixtures2 = {
+            1: [(4, 3), (2, 1)],
+            2: [(4, 5), (2, 7)],
+            3: [(5, 7)],
+            4: [(7, 6)],
+        }
+        self.assertEqual(actual_fixtures1, expected_fixtures1)
+        self.assertEqual(actual_fixtures2, expected_fixtures2)
+
+        # Propagate final round 2 (let the user with the higher ID win).
+        finals2 = mode.fixtures.filter(level = 4)
+        for fixture in finals2:
+            fixture.score = (fixture.player1.id, fixture.player2.id)
+            fixture.save()
+            propagate_ret = mode.propagate(fixture)
+            self.assertTrue(propagate_ret)
+
+        # Verify fixtures after final round 2.
+        actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
+        actual_fixtures2 = self.group_fixtures_by_level(mode, extras__tree = 2)
+        expected_fixtures1 = {
+            0: [(5, 4), (6, 3), (7, 2), (8, 1)],
+            1: [(5, 6), (7, 8)],
+            3: [(6, 8)],
+            5: [(7, 8)],
+        }
+        expected_fixtures2 = {
+            1: [(4, 3), (2, 1)],
+            2: [(4, 5), (2, 7)],
+            3: [(5, 7)],
+            4: [(7, 6)],
+        }
+        self.assertEqual(actual_fixtures1, expected_fixtures1)
+        self.assertEqual(actual_fixtures2, expected_fixtures2)
+
+        # Propagate final round 3 (let the user with the higher ID win).
+        finals3 = mode.fixtures.filter(level = 5)
+        finals3[0].score = (finals3[0].player1.id, finals3[0].player2.id)
+        finals3[0].save()
+        propagate_ret = mode.propagate(finals3[0])
+        self.assertFalse(propagate_ret)
 
 
 class FixtureTest(TestCase):

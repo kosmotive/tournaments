@@ -540,13 +540,13 @@ class Knockout(Mode):
         return result
 
     @staticmethod
-    def get_first_complete_level(num_fixtures):
+    def get_first_complete_level(num_tree1_fixtures):
         """
         Tells the first complete level of the knockout tree.
 
         This is level 0 if and only if the number of fixtures plus 1 is a power of two (e.g., 3, 7), and level 1 otherwise.
         """
-        if is_power_of_two(num_fixtures + 1):
+        if is_power_of_two(num_tree1_fixtures + 1):
             return 0
         else:
             return 1
@@ -633,10 +633,12 @@ class Knockout(Mode):
 
                     # Create the first fixture (second tree vs. main tree).
                     tree2_fixture1_extras = dict(
-                        tree   = 2,
-                        winner = dict(
-                            fixture_id  = previous_tree2_level[fidx // 2].id,
-                            player_slot = 1 + fidx % 2,
+                        tree = 2,
+                        propagate = dict(
+                            winner = dict(
+                                fixture_id  = previous_tree2_level[fidx // 2].id,
+                                player_slot = 1 + fidx % 2,
+                            ),
                         ),
                     )
 
@@ -656,10 +658,12 @@ class Knockout(Mode):
 
                     # Create the second fixture (second tree vs. second tree, main tree vs. main tree if it is the first level of the second tree).
                     tree2_fixture2_extras = dict(
-                        tree   = 2,
-                        winner = dict(
-                            fixture_id  = tree2_fixture1.id,
-                            player_slot = 1,
+                        tree = 2,
+                        propagate = dict(
+                            winner = dict(
+                                fixture_id  = tree2_fixture1.id,
+                                player_slot = 1,
+                            ),
                         ),
                     )
 
@@ -674,7 +678,7 @@ class Knockout(Mode):
                 previous_tree2_level = tree2_level
 
             # Add propagation from the main to the top-most level of the second tree.
-            for fidx, tree1_fixture in enumerate(complete_tree1_levels[-1]):
+            for fidx, tree1_fixture in enumerate(complete_tree1_levels[0]):
                 tree1_fixture.extras['propagate']['loser'] = dict(
                     fixture_id  = previous_tree2_level[fidx // 2].id,
                     player_slot = 1 + fidx % 2,
@@ -764,7 +768,7 @@ class Knockout(Mode):
             return pow(2, rlevel // 2)
 
     def get_level_name(self, level):
-        first_complete_level = Knockout.get_first_complete_level(self.fixtures.count())
+        first_complete_level = Knockout.get_first_complete_level(self.fixtures.filter(extras__tree = 1).count())
         if level < first_complete_level:
             return 'Playoffs'
 
