@@ -764,6 +764,10 @@ class Knockout(Mode):
             return pow(2, rlevel // 2)
 
     def get_level_name(self, level):
+        first_complete_level = Knockout.get_first_complete_level(self.fixtures.count())
+        if level < first_complete_level:
+            return 'Playoffs'
+
         level_size = self.get_level_size(level)
         if level_size == 2:
             base_level_name = 'Final'
@@ -778,14 +782,14 @@ class Knockout(Mode):
             return base_level_name
 
         else:
-            if level == 0:
+            if level == first_complete_level:
                 return base_level_name
             if level_size <= 2:
                 rlevel = self.levels - level
                 prefix = {3: '1st', 2: '2nd', 1: '3rd'}[rlevel]
                 return f'{prefix} Final Round'
             else:
-                prefix = {1: '1st', 0: '2nd'}[level % 2]
+                prefix = {1: '1st', 0: '2nd'}[(level + first_complete_level) % 2]
                 return f'{prefix} {base_level_name}'
 
 

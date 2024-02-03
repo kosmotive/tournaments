@@ -1266,7 +1266,16 @@ class KnockoutTest(ModeTestBase, TestCase):
         self.assertEqual(mode.get_level_name(7), '3rd Final Round')
 
     def test_double_elimination_get_level_name_10participants(self):
-        raise NotImplementedError()
+        mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
+        mode.create_fixtures(self.participants[:10])
+
+        self.assertEqual(mode.get_level_name(0), 'Playoffs')
+        self.assertEqual(mode.get_level_name(1), 'Quarter Finals')
+        self.assertEqual(mode.get_level_name(2), '1st Semifinals')
+        self.assertEqual(mode.get_level_name(3), '2nd Semifinals')
+        self.assertEqual(mode.get_level_name(4), '1st Final Round')
+        self.assertEqual(mode.get_level_name(5), '2nd Final Round')
+        self.assertEqual(mode.get_level_name(6), '3rd Final Round')
 
 
 class FixtureTest(TestCase):
