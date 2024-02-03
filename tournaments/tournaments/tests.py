@@ -963,6 +963,8 @@ class KnockoutTest(ModeTestBase, TestCase):
         final.save()
         propagate_ret = mode.propagate(final)
         self.assertFalse(propagate_ret)
+        self.assertEqual(final.winner.id, 4)
+        self.assertEqual(final.loser .id, 3)
 
         return mode
 
@@ -1424,11 +1426,21 @@ class KnockoutTest(ModeTestBase, TestCase):
         self.assertEqual(actual_fixtures2, expected_fixtures2)
 
         # Propagate final round 3 (let the user with the higher ID win).
-        finals3 = mode.fixtures.filter(level = 5)
-        finals3[0].score = (finals3[0].player1.id, finals3[0].player2.id)
-        finals3[0].save()
-        propagate_ret = mode.propagate(finals3[0])
+        finals3_fixture = mode.fixtures.get(level = 5)
+        finals3_fixture.score = (finals3_fixture.player1.id, finals3_fixture.player2.id)
+        finals3_fixture.save()
+        propagate_ret = mode.propagate(finals3_fixture)
         self.assertFalse(propagate_ret)
+        self.assertEqual(finals3_fixture.winner.id, 8)
+        self.assertEqual(finals3_fixture.loser .id, 7)
+
+        return mode
+
+    def test_double_elimination_placements(self):
+        mode = self.test_double_elimination_propagate()
+        actual_placements = [user.id for user in mode.placements]
+        expected_placements = [8, 7, 6, 5, 4, 3, 2, 1]
+        self.assertEqual(actual_placements, expected_placements)
 
 
 class FixtureTest(TestCase):

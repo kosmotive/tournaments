@@ -751,8 +751,13 @@ class Knockout(Mode):
     def placements(self):
         if self.fixtures.count() == 0:
             return None
-        final_match = self.fixtures.all()[0]
-        return [final_match.winner] + [fixture.loser for fixture in self.fixtures.all()]
+        final_match = self.fixtures.get(level = self.levels - 1)
+        if not self.double_elimination:
+            return [final_match.winner] + [fixture.loser for fixture in self.fixtures.order_by('-level')]
+        else:
+            chunk1 = [final_match.winner, final_match.loser]
+            chunk2 = [fixture.loser for fixture in self.fixtures.filter(extras__tree = 1) if fixture.loser not in chunk1]
+            return chunk1 + chunk2
 
     def get_level_size(self, level):
         """
