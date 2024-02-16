@@ -73,7 +73,7 @@ jobs:
         echo "value=$(jq -r '[.totals.percent_covered_display][0]' coverage.json)" >> $GITHUB_OUTPUT
     -
       name: Create badge
-      uses: schneegans/dynamic-badges-action@v1.6.0
+      uses: schneegans/dynamic-badges-action@v1.7.0
       with:
         auth: ${{ secrets.GIST_SECRET }}
         gistID: bb85310a74d6b05330d230443007b878
