@@ -43,7 +43,7 @@ jobs:
         python -m coverage json --omit "*/tests.py,*/migrations/*.py,manage.py"
     -
       name: Upload coverage results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: strategy.job-index == 0
       with:
         name: coverage
