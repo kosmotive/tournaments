@@ -7,9 +7,10 @@
 
 ## Screenshots
 
-<img width="1128" alt="Bildschirmfoto 2024-03-12 um 23 18 17" src="https://github.com/kostrykin/tournaments/assets/6557139/44c98a04-8613-447a-82fa-30abede06ea3">
-
-<img width="1128" alt="Bildschirmfoto 2024-03-12 um 23 18 33" src="https://github.com/kostrykin/tournaments/assets/6557139/4fefa3b0-8b98-47bf-9a7e-8812d8f3064a">
+<div align="center">
+<p><kbd><img width="1128" src="https://github.com/kostrykin/tournaments/assets/6557139/44c98a04-8613-447a-82fa-30abede06ea3"></kbd></p>
+<p><kbd><img width="1128" src="https://github.com/kostrykin/tournaments/assets/6557139/4fefa3b0-8b98-47bf-9a7e-8812d8f3064a"></kbd></p>
+</div>
 
 ## Installation
 
