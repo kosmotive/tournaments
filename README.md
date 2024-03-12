@@ -5,7 +5,15 @@
   </h1>
 </div>
 
-## Initial setup
+## Screenshots
+
+<img width="1128" alt="Bildschirmfoto 2024-03-12 um 23 18 17" src="https://github.com/kostrykin/tournaments/assets/6557139/44c98a04-8613-447a-82fa-30abede06ea3">
+
+<img width="1128" alt="Bildschirmfoto 2024-03-12 um 23 18 33" src="https://github.com/kostrykin/tournaments/assets/6557139/4fefa3b0-8b98-47bf-9a7e-8812d8f3064a">
+
+## Installation
+
+### Initial setup
 
 Create virtual environment:
 ```bash
@@ -21,7 +29,7 @@ Install dependencies into virtual environment:
 pip install -r requirements.txt
 ```
 
-### Prerequisites after initial setup
+#### Prerequisites after initial setup
 
 Activate virtual environment: (if not done yet)
 ```bash
@@ -33,7 +41,7 @@ Change into the `tournaments` directory:
 cd tournaments
 ```
 
-### Reset the database
+#### Reset the database
 
 > [!CAUTION]  
 > This is only required when migrations cannot be performed.
@@ -44,7 +52,7 @@ rm db.sqlite3
 rm -rf */migrations
 ```
 
-### Initialize the database
+#### Initialize the database
 
 > [!TIP]  
 > This is only required after initial setup or after resetting the database.
@@ -64,7 +72,7 @@ Create a superuser:
 python manage.py createsuperuser
 ```
 
-### Day-to-day use
+#### Day-to-day use
 
 Run tests:
 ```bash
