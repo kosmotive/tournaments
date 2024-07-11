@@ -56,14 +56,14 @@ rm -rf */migrations
 #### Initialize the database
 
 > [!TIP]  
-> This is only required after initial setup or after resetting the database.
+> This is only required after initial setup, after resetting the database, or when updating to new versions.
 
 Create migrations:
 ```bash
 python manage.py makemigrations tournaments
 ```
 
-Create database:
+Create/update database:
 ```bash
 python manage.py migrate
 ```
