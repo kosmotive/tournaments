@@ -1,5 +1,5 @@
 asgiref==3.7.2
-django==4.2.9
+django==4.2.14
 django-polymorphic==3.1.0
 django-crispy-forms==2.1
 crispy-bootstrap4==2023.1
