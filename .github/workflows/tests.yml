@@ -46,3 +46,6 @@ jobs:
         gist-auth: ${{ secrets.GIST_SECRET }}
         gist-filename: tournaments.json
         working-directory: tournaments
+        run: |
+          coverage run --source='.' manage.py test
+          python -m coverage json --omit "*/tests.py,*/migrations/*.py,manage.py"
