@@ -38,7 +38,7 @@ jobs:
         pip install coverage
         
     - name: Run tests
-      uses: kostrykin/report-test-coverage-action@v1.0.0
+      uses: kostrykin/report-test-coverage-action@v1.0.2
       with:
         report: ${{ strategy.job-index == 0 }}
         gist-id: bb85310a74d6b05330d230443007b878
