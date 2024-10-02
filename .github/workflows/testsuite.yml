@@ -1,0 +1,36 @@
+name: Test suite
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - develop
+      - master
+    paths:
+      - .github/workflows/testsuite.yml
+      - giatools/*.py
+      - setup.py
+      - tests/*.py
+      - tests/data/**
+      - requirements.txt
+      - tests/requirements.txt
+
+jobs:
+  run_testsuite:
+    name: Tests
+    uses: BMCV/github-workflows/.github/workflows/coverage-run.yml@main
+    with:
+      main_branch: master
+      python_versions: '["3.9", "3.10"]'
+      main_python_version: "3.10"
+      pip-install: -r requirements.txt
+      gist-id: bb85310a74d6b05330d230443007b878
+      gist-filename: tournaments.json
+      run: |
+        coverage run --source='.' manage.py test
+        python -m coverage json --omit "*/tests.py,*/migrations/*.py,manage.py"
+    secrets:
+      gist-auth: ${{ secrets.GIST_SECRET }}
