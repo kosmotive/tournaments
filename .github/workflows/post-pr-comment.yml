@@ -5,6 +5,9 @@ on:
     workflows: [Test suite]
     types: [completed]
 
+permissions:
+  pull-requests: write
+
 jobs:
   post_pr_comment:
     uses: BMCV/github-workflows/.github/workflows/coverage-post-pr-comment.yml@main
