@@ -16,6 +16,7 @@ jobs:
       python_versions: '["3.9", "3.10"]'
       main_python_version: "3.10"
       pip_install: -r requirements.txt
+      working-directory: tournaments
       gist-id: bb85310a74d6b05330d230443007b878
       gist-filename: tournaments.json
       run: |
