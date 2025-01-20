@@ -226,10 +226,11 @@ class JoinTournamentView(LoginRequiredMixin, SingleObjectMixin, View):
             return HttpResponse(status = 412)
 
         # Create the participation only if it does not already exist.
-        if not self.object.participations.filter(user = request.user).exists():
+        if not self.object.participations.filter(participant__user = request.user).exists():
+            participant, created = models.Participant.objects.get_or_create(user = request.user, defaults = {'name': request.user.username})
             models.Participation.objects.create(
                 tournament = self.object,
-                user = self.request.user,
+                participant = participant,
                 slot_id = models.Participation.next_slot_id(self.object))
 
         request.session['alert'] = dict(status = 'success', text = 'You have joined the tournament.')
@@ -248,11 +249,41 @@ class WithdrawTournamentView(LoginRequiredMixin, SingleObjectMixin, View):
             return HttpResponse(status = 412)
 
         # Delete the participation only if it exists.
-        if self.object.participations.filter(user = request.user).exists():
-            models.Participation.objects.filter(user = request.user).delete()
+        if self.object.participations.filter(participant__user = request.user).exists():
+            self.object.participations.filter(participant__user = request.user).delete()
 
         request.session['alert'] = dict(status = 'success', text = 'You have withdrawn from the tournament.')
         return redirect('update-tournament', pk = self.object.id)
+
+
+class ManageParticipantsView(IsCreatorMixin, SingleObjectMixin, VersionInfoMixin, AlertMixin, View):
+
+    model = models.Tournament
+    template_name = 'frontend/manage-participants.html'
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        context = self.get_context_data(**kwargs)
+        context['participants'] = self.object.participations.all()
+        return render(request, self.template_name, context)
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        participant_names = request.POST.get('participant_names')
+        if participant_names:
+            participant_names_list = participant_names.splitlines()
+            for participant_name in participant_names_list:
+                participant, created = models.Participant.objects.get_or_create(name = participant_name)
+                if not self.object.participations.filter(participant = participant).exists():
+                    models.Participation.objects.create(
+                        tournament = self.object,
+                        participant = participant,
+                        slot_id = models.Participation.next_slot_id(self.object)
+                    )
+            # Automatically delete participants that are not part of any tournament
+            models.Participant.objects.filter(participations__isnull = True, user__isnull = True).delete()
+            request.session['alert'] = dict(status = 'success', text = f'Participants have been updated.')
+        return redirect('manage-participants', pk = self.object.id)
 
 
 class TournamentProgressView(SingleObjectMixin, VersionInfoMixin, AlertMixin, View):
@@ -299,7 +330,7 @@ class TournamentProgressView(SingleObjectMixin, VersionInfoMixin, AlertMixin, Vi
     def get_fixture_data(self, stage, level, fixture):
         return {
             'data': fixture,
-            'editable': not fixture.is_confirmed and level == stage.current_level and self.request.user.id and stage.tournament.participations.filter(user = self.request.user).count() > 0,
+            'editable': not fixture.is_confirmed and level == stage.current_level and self.request.user.id and stage.tournament.participations.filter(participant__user = self.request.user).count() > 0,
             'has_confirmed': fixture.confirmations.filter(id = self.request.user.id).count() > 0,
         }
 
@@ -330,7 +361,7 @@ class TournamentProgressView(SingleObjectMixin, VersionInfoMixin, AlertMixin, Vi
         fixture = models.Fixture.objects.get(id = request.POST.get('fixture_id'))
 
         # Check whether the user is a participator.
-        if not request.user.id or self.object.participations.filter(user = request.user).count() == 0:
+        if not request.user.id or self.object.participations.filter(participant__user = request.user).count() == 0:
             return HttpResponseForbidden() 
 
         # Check whether the tournament is active.
