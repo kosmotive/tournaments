@@ -1,0 +1,18 @@
+{% extends "frontend/base.html" %}
+
+{% block title %}Manage Participants{% endblock %}
+
+{% block header %}
+<h1>Manage Participants</h1>
+{% endblock %}
+
+{% block content %}
+<form method="post" action="{% url 'manage-participants' pk=tournament.id %}">
+    {% csrf_token %}
+    <div class="form-group">
+        <label for="participant_names">Participant Names (one per line)</label>
+        <textarea class="form-control" id="participant_names" name="participant_names" rows="10" required></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Save Participants</button>
+</form>
+{% endblock %}

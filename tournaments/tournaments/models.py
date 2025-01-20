@@ -199,9 +199,17 @@ def delete_tournament_stages(sender, instance, **kwargs):
     instance.stages.non_polymorphic().all().delete()
 
 
+class Participant(models.Model):
+    user = models.ForeignKey('auth.User', on_delete = models.SET_NULL, related_name = 'participant', null = True, blank = True)
+    name = models.CharField(max_length = 100)
+
+    def __str__(self):
+        return self.name
+
+
 class Participation(models.Model):
 
-    user = models.ForeignKey('auth.User', on_delete = models.PROTECT, related_name = 'participations')
+    participant = models.ForeignKey('Participant', on_delete = models.CASCADE, related_name='participations')
     tournament = models.ForeignKey('Tournament', on_delete = models.CASCADE, related_name = 'participations')
     slot_id = models.PositiveIntegerField()
     podium_position = models.PositiveIntegerField(null = True, blank = True)
@@ -214,7 +222,7 @@ class Participation(models.Model):
         ordering = ('tournament', 'slot_id')
         unique_together = [
             ('tournament', 'slot_id'),
-            ('tournament', 'user'),
+            ('tournament', 'participant'),
             ('tournament', 'podium_position'),
         ]
 
@@ -846,7 +854,7 @@ class Fixture(models.Model):
 
     @property
     def required_confirmations_count(self):
-        return 1 + self.mode.tournament.participations.count() // 2
+        return 1 + self.mode.tournament.participations.filter(participant__user__isnull = False).count() // 2
 
     @property
     def is_confirmed(self):
