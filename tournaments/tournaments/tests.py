@@ -219,7 +219,7 @@ def assert_division_schedule_validity(test, schedule, with_returns):
 def _add_participating_users(participating_users_pool, tournament):
     for user in participating_users_pool:
         Participation.objects.create(
-            user = Participant.objects.create(user = user, name = user.name),
+            user = Participant.create_for_user(user),
             tournament = tournament,
             slot_id = Participation.next_slot_id(tournament))
 
@@ -1470,7 +1470,12 @@ class FixtureTest(TestCase):
                 password =  'password')
             for user_idx in range(2)
         ]
-        self.fixture = Fixture.objects.create(mode = self.knockout, level = 0, player1 = self.players[0], player2 = self.players[1])
+        self.fixture = Fixture.objects.create(
+            mode = self.knockout,
+            level = 0,
+            player1 = Participant.create_for_user(self.players[0]),
+            player2 = Participant.create_for_user(self.players[1]),
+        )
 
     def test_score(self):
         self.assertEqual(self.fixture.score, (None, None))

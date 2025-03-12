@@ -160,8 +160,8 @@ class Tournament(models.Model):
     @transaction.atomic
     def test(self):
         tournament = Tournament.load(definition = self.definition, name = 'Test')
-        for participant in (User.objects.create(username = f'testuser-{pidx}', password = 'password') for pidx in range(len(self.participants))):
-            participant = Participant.objects.create(user = participant, name = participant.username)
+        for participating_user in (User.objects.create(username = f'testuser-{pidx}', password = 'password') for pidx in range(len(self.participants))):
+            participant = Participant.create_for_user(user = participating_user)
             Participation.objects.create(participant = participant, tournament = tournament, slot_id = Participation.next_slot_id(tournament))
 
         # Initialize the tournament.
@@ -207,6 +207,10 @@ def delete_tournament_stages(sender, instance, **kwargs):
 class Participant(models.Model):
     user = models.ForeignKey('auth.User', on_delete = models.SET_NULL, related_name = 'participant', null = True, blank = True)
     name = models.CharField(max_length = 100)
+
+    @staticmethod
+    def create_for_user(user):
+        return Participant.objects.create(user = user, name = user.username)
 
     def __str__(self):
         return self.name

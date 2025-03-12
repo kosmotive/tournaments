@@ -329,7 +329,7 @@ def add_participators(tournament, number = 10):
         tournament.save()
     users = [models.User.objects.get_or_create(username = f'user{idx}')[0] for idx in range(number)]
     for user in users:
-        models.Participation.objects.create(tournament = tournament, participant = models.Participant.objects.create(user = user, name = user.username), slot_id = models.Participation.next_slot_id(tournament))
+        models.Participation.objects.create(tournament = tournament, participant = models.Participant.create_for_user(user), slot_id = models.Participation.next_slot_id(tournament))
     return users
 
 
@@ -500,7 +500,7 @@ class WithdrawTournamentViewTests(TestCase):
 
         for tournament in models.Participation.objects.all():
             for user in models.User.objects.all():
-                models.Participation.objects.create(tournament = tournament, participant = models.Participant.objects.create(user = user, name = user.username), slot_id = models.Participation.next_slot_id(tournament))
+                models.Participation.objects.create(tournament = tournament, participant = models.Participant.create_for_user(user), slot_id = models.Participation.next_slot_id(tournament))
 
     def test_unauthenticated(self):
         self.client.logout()
