@@ -753,19 +753,33 @@ class GroupsTest(ModeTestBase, TestCase):
 class KnockoutTest(ModeTestBase, TestCase):
 
     def test_reorder_participants(self):
-        self.assertEqual(Knockout.reorder_participants(account_for_playoffs = False, participants = []), [])
-        self.assertEqual(Knockout.reorder_participants(account_for_playoffs = False, participants = [1]), [1])
-        self.assertEqual(Knockout.reorder_participants(account_for_playoffs = False, participants = [1, 2]), [1, 2])
-        self.assertEqual(Knockout.reorder_participants(account_for_playoffs = False, participants = [1, 2, 3]), [1, 3, 2])
-        self.assertEqual(Knockout.reorder_participants(account_for_playoffs = False, participants = [1, 2, 3, 4, 5, 6]), [1, 6, 2, 5, 3, 4])
-        self.assertEqual(Knockout.reorder_participants(account_for_playoffs = False, participants = [1, 2, 3, 4, 5, 6, 7]), [1, 7, 2, 6, 3, 5, 4])
+        subtests = [
+            (dict(account_for_playoffs = False, participants = []), []),
+            (dict(account_for_playoffs = False, participants = [1]), [1]),
+            (dict(account_for_playoffs = False, participants = [1, 2]), [1, 2]),
+            (dict(account_for_playoffs = False, participants = [1, 2, 3]), [1, 3, 2]),
+            (dict(account_for_playoffs = False, participants = [1, 2, 3, 4, 5, 6]), [1, 6, 2, 5, 3, 4]),
+            (dict(account_for_playoffs = False, participants = [1, 2, 3, 4, 5, 6, 7]), [1, 7, 2, 6, 3, 5, 4]),
 
-        self.assertEqual(Knockout.reorder_participants(account_for_playoffs = True, participants = []), [])
-        self.assertEqual(Knockout.reorder_participants(account_for_playoffs = True, participants = [1]), [1])
-        self.assertEqual(Knockout.reorder_participants(account_for_playoffs = True, participants = [1, 2]), [1, 2])
-        self.assertEqual(Knockout.reorder_participants(account_for_playoffs = True, participants = [1, 2, 3]), [2, 3, 1])
-        self.assertEqual(Knockout.reorder_participants(account_for_playoffs = True, participants = [1, 2, 3, 4, 5, 6]), [3, 6, 4, 5, 1, 2])
-        self.assertEqual(Knockout.reorder_participants(account_for_playoffs = True, participants = [1, 2, 3, 4, 5, 6, 7]), [2, 7, 3, 6, 4, 5, 1])
+            (dict(account_for_playoffs = True, participants = []), []),
+            (dict(account_for_playoffs = True, participants = [1]), [1]),
+            (dict(account_for_playoffs = True, participants = [1, 2]), [1, 2]),
+            (dict(account_for_playoffs = True, participants = [1, 2, 3]), [2, 3, 1]),
+            (dict(account_for_playoffs = True, participants = [1, 2, 3, 4, 5, 6]), [3, 6, 4, 5, 1, 2]),
+            (dict(account_for_playoffs = True, participants = [1, 2, 3, 4, 5, 6, 7]), [2, 7, 3, 6, 4, 5, 1]),
+        ]
+
+        for use_querysets in [False, True]:
+            for subtest_params, expected in subtests:
+                with self.subTest(**subtest_params, use_querysets = use_querysets):
+                    if use_querysets:
+                        subtest_params = dict(subtest_params)
+                        subtest_params['participants'] = User.objects.filter(id__in = subtest_params['participants'])
+                        expected = [
+                            User.objects.get(id = id) if id is not None else None
+                            for id in expected
+                        ]
+                    self.assertEqual(Knockout.reorder_participants(**subtest_params), expected)
 
     def test_create_fixtures_2participants(self):
         mode = Knockout.objects.create(tournament = self.tournament)
