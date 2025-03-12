@@ -1540,8 +1540,13 @@ class TournamentTest(TestCase):
 
     def test_start_tournament3_uneven_participants(self):
         tournament = self.test_load_tournament3()
-        _add_participants(self.participants[:3], tournament)
-        tournament.update_state()
+        for n_participants in [3, 5, 7, 9, 11, 13, 15]:
+            with self.subTest(n_participants = n_participants):
+                _clear_participants(tournament)
+                _add_participants(self.participants[:n_participants], tournament)
+                with self.assertRaises(ValueError) as error_ctx:
+                    tournament.update_state()
+                self.assertEqual(error_ctx.exception.args[0], 'number of knockout participants must be even')
 
     def test_delete(self):
         tournament = self.test_load_tournament1()

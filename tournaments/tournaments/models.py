@@ -522,6 +522,10 @@ class Knockout(Mode):
         # Account for playoffs.
         if account_for_playoffs and not power_of_two:
 
+            # Verify that the number of participants is even.
+            if len(participants) % 2 == 1:
+                raise ValueError(f'number of knockout participants must be even')
+
             # Number of participants allocated for the playoffs.
             n = min((2 * (len(participants) - power_of_two_floor), len(participants)))
 
