@@ -70,6 +70,18 @@ test_tournament2_yml = \
     - playoffs.placements[0]
     """
 
+test_tournament3_yml = \
+    """
+    stages:
+    -
+      id: main_round
+      name: Elimination
+      mode: knockout
+
+    podium:
+    - main_round.placements[:3]
+    """
+
 
 class split_into_groups_Test(TestCase):
 
@@ -1514,6 +1526,16 @@ class TournamentTest(TestCase):
         ]
         self.assertEqual(actual_stages, expected_stages)
         self.assertTrue(tournament.stages.all()[0].double_elimination)
+        return tournament
+
+    def test_load_tournament3(self):
+        tournament = Tournament.load(test_tournament3_yml, 'Test Cup')
+        actual_stages = [type(stage) for stage in tournament.stages.all()]
+        expected_stages = [
+            Knockout,
+        ]
+        self.assertEqual(actual_stages, expected_stages)
+        self.assertFalse(tournament.stages.all()[0].double_elimination)
         return tournament
 
     def test_delete(self):
