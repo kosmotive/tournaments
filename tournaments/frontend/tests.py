@@ -464,7 +464,7 @@ class JoinTournamentViewTests(TestCase):
         response = self.client.get(reverse('join-tournament', kwargs = dict(pk = self.user2_tournament.id)), follow = True)
         self.assertEqual(response.status_code, 200)
         self.assertIs(response.resolver_match.func.view_class, views.UpdateTournamentView)
-        self.assertTrue(self.user1 in (p.user for p in self.user2_tournament.participants))
+        self.assertTrue(self.user1 in self.user2_tournament.participating_users)
 
     def test_drafted(self):
         self.user1_tournament.published = False
@@ -485,7 +485,7 @@ class JoinTournamentViewTests(TestCase):
         response = self.client.get(reverse('join-tournament', kwargs = dict(pk = self.user1_tournament.id)), follow = True)
         self.assertEqual(response.status_code, 200)
         self.assertIs(response.resolver_match.func.view_class, views.UpdateTournamentView)
-        self.assertTrue(self.user1 in (p.user for p in self.user1_tournament.participants))
+        self.assertTrue(self.user1 in self.user1_tournament.participating_users)
 
 
 class WithdrawTournamentViewTests(TestCase):
