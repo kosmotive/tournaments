@@ -94,7 +94,7 @@ class IndexView(VersionInfoMixin, ListView):
         context['active']   = published_tournaments.filter(fixtures__gte = 1, podium_size = 0)
         context['finished'] = published_tournaments.filter(podium_size__gte = 1)
 
-        context['allstars'] = [models.Participation.objects.filter(podium_position = position).annotate(count = Count('user')) for position in range(3)]
+        context['allstars'] = [models.Participation.objects.filter(podium_position = position).annotate(count = Count('participant__name')) for position in range(3)]
         if not any(context['allstars']): context['allstars'] = None
 
         return context
@@ -264,7 +264,6 @@ class ManageParticipantsView(IsCreatorMixin, SingleObjectMixin, VersionInfoMixin
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
         context = self.get_context_data(**kwargs)
-        context['participants'] = self.object.participations.all()
         return render(request, self.template_name, context)
 
     def post(self, request, *args, **kwargs):
@@ -284,6 +283,16 @@ class ManageParticipantsView(IsCreatorMixin, SingleObjectMixin, VersionInfoMixin
             models.Participant.objects.filter(participations__isnull = True, user__isnull = True).delete()
             request.session['alert'] = dict(status = 'success', text = f'Participants have been updated.')
         return redirect('manage-participants', pk = self.object.id)
+
+    def get_context_data(self, **kwargs):
+        context = super(ManageParticipantsView, self).get_context_data(**kwargs)
+        context.update(VersionInfoMixin.get_context_data(self, **kwargs))
+        context['breadcrumb'] = create_breadcrumb([
+            dict(label = 'Index', url = reverse('index')),
+            dict(label = self.object.name, url = self.request.path),
+        ])
+        context['participants'] = self.object.participations.all()
+        return context
 
 
 class TournamentProgressView(SingleObjectMixin, VersionInfoMixin, AlertMixin, View):

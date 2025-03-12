@@ -64,7 +64,11 @@ class Tournament(models.Model):
 
     @property
     def participants(self):
-        return User.objects.filter(participations__tournament = self).order_by('participations__slot_id')
+        return Participant.objects.filter(participations__tournament = self).order_by('participations__slot_id')
+
+    @property
+    def participating_users(self):
+        return User.objects.filter(participant__participations__tournament = self).order_by('participant__participations__slot_id')
 
     @property
     def current_stage(self):
@@ -157,7 +161,8 @@ class Tournament(models.Model):
     def test(self):
         tournament = Tournament.load(definition = self.definition, name = 'Test')
         for participant in (User.objects.create(username = f'testuser-{pidx}', password = 'password') for pidx in range(len(self.participants))):
-            Participation.objects.create(user = participant, tournament = tournament, slot_id = Participation.next_slot_id(tournament))
+            participant = Participant.objects.create(user = participant, name = participant.username)
+            Participation.objects.create(participant = participant, tournament = tournament, slot_id = Participation.next_slot_id(tournament))
 
         # Initialize the tournament.
         try:
@@ -174,8 +179,8 @@ class Tournament(models.Model):
                 # Play the current level, then update the tournament state.
                 for fixture in tournament.current_stage.current_fixtures:
 
-                    for participant in tournament.participants[:fixture.required_confirmations_count]:
-                        fixture.confirmations.add(participant)
+                    for user in tournament.participating_users[:fixture.required_confirmations_count]:
+                        fixture.confirmations.add(user)
 
                     fixture.score = (fixture.player1.id, fixture.player2.id)
                     fixture.save()
@@ -209,7 +214,7 @@ class Participant(models.Model):
 
 class Participation(models.Model):
 
-    participant = models.ForeignKey('Participant', on_delete = models.CASCADE, related_name='participations')
+    participant = models.ForeignKey('Participant', on_delete = models.CASCADE, related_name = 'participations')
     tournament = models.ForeignKey('Tournament', on_delete = models.CASCADE, related_name = 'participations')
     slot_id = models.PositiveIntegerField()
     podium_position = models.PositiveIntegerField(null = True, blank = True)
@@ -819,8 +824,8 @@ class Fixture(models.Model):
     mode    = models.ForeignKey('Mode', on_delete = models.CASCADE, related_name = 'fixtures')
     level   = models.PositiveSmallIntegerField()
     extras  = models.JSONField(default = list, blank = True)
-    player1 = models.ForeignKey('auth.User', on_delete = models.PROTECT, related_name = 'fixtures1', null = True)
-    player2 = models.ForeignKey('auth.User', on_delete = models.PROTECT, related_name = 'fixtures2', null = True)
+    player1 = models.ForeignKey('Participant', on_delete = models.PROTECT, related_name = 'fixtures1', null = True)
+    player2 = models.ForeignKey('Participant', on_delete = models.PROTECT, related_name = 'fixtures2', null = True)
     score1  = models.PositiveSmallIntegerField(null = True)
     score2  = models.PositiveSmallIntegerField(null = True)
     confirmations = models.ManyToManyField('auth.User', related_name = 'fixture_confirmations')
