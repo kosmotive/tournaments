@@ -217,11 +217,18 @@ def assert_division_schedule_validity(test, schedule, with_returns):
 
 
 def _add_participating_users(participating_users_pool, tournament):
+    participants = list()
     for user in participating_users_pool:
+
+        participant = Participant.create_for_user(user)
+        participants.append(participant)
+
         Participation.objects.create(
-            user = Participant.create_for_user(user),
+            participant = participant,
             tournament = tournament,
             slot_id = Participation.next_slot_id(tournament))
+
+    return participants
 
 
 def _clear_participants(tournament):
@@ -250,7 +257,7 @@ class ModeTestBase:
             self.participating_users.append(user)
 
     def add_participants(self, tournament, number):
-        _add_participating_users(self.participating_users[:number], tournament)
+        return _add_participating_users(self.participating_users[:number], tournament)
 
     def clear_participants(self, tournament):
         _clear_participants(tournament)
@@ -344,7 +351,8 @@ class GroupsTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_minimal(self):
         mode = Groups.objects.create(tournament = self.tournament, min_group_size = 2, max_group_size = 2)
-        mode.create_fixtures(self.participants[:2])
+        participants = self.add_participants(self.tournament, 2)
+        mode.create_fixtures(participants)
 
         # Verify groups.
         actual_groups_info = mode.groups_info
@@ -362,7 +370,8 @@ class GroupsTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_extended(self):
         mode = Groups.objects.create(tournament = self.tournament, min_group_size = 2, max_group_size = 3)
-        mode.create_fixtures(self.participants[:5])
+        participants = self.add_participants(self.tournament, 5)
+        mode.create_fixtures(participants)
 
         # Verify groups.
         actual_groups_info = mode.groups_info
