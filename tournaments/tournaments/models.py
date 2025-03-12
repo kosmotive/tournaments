@@ -106,7 +106,7 @@ class Tournament(models.Model):
             # If the tournament is finished, update the podium positions.
             podium = self._get_podium()
             for position, participant in enumerate(podium):
-                participation = self.participations.get(user = participant)
+                participation = self.participations.get(participant = participant)
                 participation.podium_position = position
                 participation.save()
 
