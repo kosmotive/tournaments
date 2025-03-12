@@ -1538,6 +1538,11 @@ class TournamentTest(TestCase):
         self.assertFalse(tournament.stages.all()[0].double_elimination)
         return tournament
 
+    def test_start_tournament3_uneven_participants(self):
+        tournament = self.test_load_tournament3()
+        _add_participants(self.participants[:3], tournament)
+        tournament.update_state()
+
     def test_delete(self):
         tournament = self.test_load_tournament1()
         tournament.delete()
