@@ -5,7 +5,7 @@ import random
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
-from django.db.models import CheckConstraint, Q, Min, Max
+from django.db.models import CheckConstraint, Q, QuerySet, Min, Max
 from django.db.models.signals import pre_delete
 from django.dispatch import receiver
 
@@ -532,6 +532,10 @@ class Knockout(Mode):
 
             # Number of participants allocated for the playoffs.
             n = min((2 * (len(participants) - power_of_two_floor), len(participants)))
+
+            # Negative indexing is not supported on QuerySet onbjects, thus convert to list.
+            if isinstance(participants, QuerySet):
+                participants = list(participants)
 
             # Allocate the participants.
             playoffs_part = Knockout.reorder_participants(participants[-n:], account_for_playoffs = False)
