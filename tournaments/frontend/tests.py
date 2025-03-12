@@ -741,7 +741,7 @@ class TournamentProgressViewTests(TestCase):
         self.test_open() ## start the tournament
         self.client.force_login(self.users[0])
         fixture = self.tournament1.current_stage.fixtures.filter(level = self.tournament1.current_stage.current_level)[0]
-        _confirm_fixture(self.tournament1.participants, fixture)
+        _confirm_fixture(self.tournament1.participating_users, fixture)
         response = self.client.post(
             reverse('tournament-progress', kwargs = dict(pk = self.tournament1.id)),
             dict(

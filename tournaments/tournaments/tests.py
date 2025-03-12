@@ -12,6 +12,7 @@ from tournaments.models import (
     unwrap_list,
     is_power_of_two,
     Tournament,
+    Participant,
     Participation,
     Mode,
     Groups,
@@ -215,10 +216,10 @@ def assert_division_schedule_validity(test, schedule, with_returns):
         raise
 
 
-def _add_participants(participants_pool, tournament):
-    for participant in participants_pool:
+def _add_participating_users(participating_users_pool, tournament):
+    for user in participating_users_pool:
         Participation.objects.create(
-            user = participant,
+            user = Participant.objects.create(user = user, name = user.name),
             tournament = tournament,
             slot_id = Participation.next_slot_id(tournament))
 
@@ -227,10 +228,10 @@ def _clear_participants(tournament):
     Participation.objects.filter(tournament = tournament).delete()
 
 
-def _confirm_fixture(participants, fixture, score1 = 0, score2 = 0):
+def _confirm_fixture(participating_users, fixture, score1 = 0, score2 = 0):
     n = fixture.required_confirmations_count
-    for participant in participants[:n]:
-        fixture.confirmations.add(participant)
+    for user in participating_users[:n]:
+        fixture.confirmations.add(user)
 
     fixture.score = (score1, score2)
     fixture.save()
@@ -240,22 +241,22 @@ class ModeTestBase:
 
     def setUp(self):
         self.tournament = Tournament.objects.create(name = 'Test', podium_spec = list())
-        self.participants = list()
+        self.participating_users = list()
         for user_idx in range(16):
             user = User.objects.create_user(
                 id = user_idx + 1,
                 username = f'user-{user_idx + 1}',
                 password =  'password')
-            self.participants.append(user)
+            self.participating_users.append(user)
 
     def add_participants(self, tournament, number):
-        _add_participants(self.participants[:number], tournament)
+        _add_participating_users(self.participating_users[:number], tournament)
 
     def clear_participants(self, tournament):
         _clear_participants(tournament)
 
     def confirm_fixture(self, *args, **kwargs):
-        _confirm_fixture(self.participants, *args, **kwargs)
+        _confirm_fixture(self.participating_users, *args, **kwargs)
 
     def group_fixtures_by_level(self, mode, **filters):
         actual_fixtures = dict()
@@ -1500,7 +1501,7 @@ class FixtureTest(TestCase):
 class TournamentTest(TestCase):
 
     def setUp(self):
-        self.participants = [
+        self.participating_users = [
             User.objects.create(
                 id = user_idx + 1,
                 username = f'user-{user_idx + 1}',
@@ -1536,7 +1537,7 @@ class TournamentTest(TestCase):
 
     def test_shuffle_participants(self, repeat = 0):
         tournament = self.test_load_tournament1()
-        _add_participants(self.participants, tournament)
+        _add_participating_users(self.participating_users, tournament)
         permutations = list()
         original_participants = tuple([p.id for p in tournament.participants])
         for itr in range(repeat + 1):
@@ -1555,32 +1556,32 @@ class TournamentTest(TestCase):
         tournament = self.test_load_tournament1()
         self.assertEqual(tournament.current_stage.id, tournament.stages.all()[0].id)
 
-        _add_participants(self.participants, tournament)
+        _add_participating_users(self.participating_users, tournament)
 
-        tournament.current_stage.create_fixtures(self.participants)
+        tournament.current_stage.create_fixtures(self.participating_users)
         self.assertEqual(tournament.current_stage.id, tournament.stages.all()[0].id)
 
         for fixture in tournament.current_stage.fixtures.all():
-            _confirm_fixture(self.participants, fixture)
+            _confirm_fixture(self.participating_users, fixture)
         self.assertEqual(tournament.current_stage.id, tournament.stages.all()[1].id)
 
-        tournament.current_stage.create_fixtures(self.participants)
+        tournament.current_stage.create_fixtures(self.participating_users)
         self.assertEqual(tournament.current_stage.id, tournament.stages.all()[1].id)
 
         for fixture in tournament.current_stage.fixtures.all():
-            _confirm_fixture(self.participants, fixture)
+            _confirm_fixture(self.participating_users, fixture)
         self.assertEqual(tournament.current_stage.id, tournament.stages.all()[2].id)
 
-        tournament.current_stage.create_fixtures(self.participants)
+        tournament.current_stage.create_fixtures(self.participating_users)
         self.assertEqual(tournament.current_stage.id, tournament.stages.all()[2].id)
 
         for fixture in tournament.current_stage.fixtures.all():
-            _confirm_fixture(self.participants, fixture)
+            _confirm_fixture(self.participating_users, fixture)
         self.assertIsNone(tournament.current_stage)
 
     def test_update_state(self):
         tournament = self.test_load_tournament1()
-        _add_participants(self.participants, tournament)
+        _add_participating_users(self.participating_users, tournament)
         tournament.update_state()
 
         # Play through the tournament, always make the participant with the higher ID win.
@@ -1589,7 +1590,7 @@ class TournamentTest(TestCase):
             # Play the current level, then update the tournament state.
             for fixture in tournament.current_stage.current_fixtures:
 
-                _confirm_fixture(self.participants, fixture, score1 = fixture.player1.id, score2 = fixture.player2.id)
+                _confirm_fixture(self.participating_users, fixture, score1 = fixture.player1.id, score2 = fixture.player2.id)
 
             tournament.update_state()
 
