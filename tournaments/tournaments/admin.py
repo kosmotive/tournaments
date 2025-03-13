@@ -8,7 +8,7 @@ from . import models
 
 class ParticipationInline(admin.TabularInline):
     model = models.Participation
-    fields = ('user', 'slot_id', 'podium_position')
+    fields = ('participant', 'slot_id', 'podium_position')
 
 @admin.action(description='Reset active/finished tournament to open')
 def reset_tournament(modeladmin, request, queryset):

@@ -805,16 +805,16 @@ class ManageParticipantsViewTests(TestCase):
     def test_get(self):
         response = self.client.get(reverse('manage-participants', kwargs = dict(pk = self.tournament1.id)))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Manage Participants')
-        self.assertContains(response, 'Participant Names (one per line)')
-        self.assertContains(response, 'Save Participants')
+        self.assertContains(response, 'Manage Attendees')
+        self.assertContains(response, 'Attendee Names (one per line)')
+        self.assertContains(response, 'Save Attendees')
 
     def test_post(self):
         participant_names = "Participant1\nParticipant2\nParticipant3"
         response = self.client.post(reverse('manage-participants', kwargs = dict(pk = self.tournament1.id)),
                                     dict(participant_names = participant_names), follow = True)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Participants have been updated.')
+        self.assertContains(response, 'Attendees have been updated.')
         self.assertTrue(models.Participant.objects.filter(name = 'Participant1').exists())
         self.assertTrue(models.Participant.objects.filter(name = 'Participant2').exists())
         self.assertTrue(models.Participant.objects.filter(name = 'Participant3').exists())

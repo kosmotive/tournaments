@@ -163,6 +163,8 @@
     
                     <a class="btn btn-secondary {{ button_classes }}" href="javascript:confirmGoTo('All current attendees will be removed when the tournament is reset to draft mode.', '{% url 'draft-tournament' pk=tournament.id %}');" role="button"><i class="bi bi-eye-fill"></i> Published</a>
     
+                    <a class="btn btn-secondary {{ button_classes }}" href="{% url 'manage-participants' pk=tournament.id %}" role="button"><i class="bi bi-person-fill-gear"></i> Attendees</a>
+    
                     {% if tournament.participations.count >= 3 %}
     
                         <a class="btn btn-warning {{ button_classes }}" href="javascript:confirmGoTo('People will not be able to join the tournament after it is started.', '{% url 'tournament-progress' pk=tournament.id %}');" role="button"><i class="bi bi-play-fill"></i> Start</a>
