@@ -64,11 +64,18 @@ class Tournament(models.Model):
 
     @property
     def participants(self):
-        return Participant.objects.filter(participations__tournament = self).order_by('participations__slot_id')
+        return Participant.objects.filter(participation__tournament = self).order_by('participation__slot_id')
 
     @property
     def participating_users(self):
-        return User.objects.filter(participant__participations__tournament = self).order_by('participant__participations__slot_id')
+        return User.objects.filter(participant__participation__tournament = self).order_by('participant__participation__slot_id')
+    
+    def get_participant(self, user = None, name = None):
+        assert (user is None) != (name is None)
+        if user is not None:
+            return self.participants.get(user = user)
+        else:
+            return self.participants.get(name = name)
 
     @property
     def current_stage(self):
@@ -218,14 +225,10 @@ class Participant(models.Model):
 
 class Participation(models.Model):
 
-    participant = models.ForeignKey('Participant', on_delete = models.CASCADE, related_name = 'participations')
+    participant = models.ForeignKey('Participant', on_delete = models.CASCADE, related_name = 'participation')
     tournament = models.ForeignKey('Tournament', on_delete = models.CASCADE, related_name = 'participations')
     slot_id = models.PositiveIntegerField()
     podium_position = models.PositiveIntegerField(null = True, blank = True)
-
-    @staticmethod
-    def next_slot_id(tournament):
-        return Participation.objects.filter(tournament = tournament).aggregate(Max('slot_id', default = -1))['slot_id__max'] + 1
 
     class Meta:
         ordering = ('tournament', 'slot_id')
@@ -234,6 +237,10 @@ class Participation(models.Model):
             ('tournament', 'participant'),
             ('tournament', 'podium_position'),
         ]
+
+    @staticmethod
+    def next_slot_id(tournament):
+        return Participation.objects.filter(tournament = tournament).aggregate(Max('slot_id', default = -1))['slot_id__max'] + 1
 
 
 def parse_participants_str_list(participants_str_list):

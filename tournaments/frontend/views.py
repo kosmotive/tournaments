@@ -280,7 +280,7 @@ class ManageParticipantsView(IsCreatorMixin, SingleObjectMixin, VersionInfoMixin
                         slot_id = models.Participation.next_slot_id(self.object)
                     )
             # Automatically delete participants that are not part of any tournament
-            models.Participant.objects.filter(participations__isnull = True, user__isnull = True).delete()
+            models.Participant.objects.filter(participation__isnull = True, user__isnull = True).delete()
             request.session['alert'] = dict(status = 'success', text = f'Participants have been updated.')
         return redirect('manage-participants', pk = self.object.id)
 
