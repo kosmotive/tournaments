@@ -231,6 +231,21 @@ def _add_participating_users(participating_users_pool, tournament):
     return participants
 
 
+def _add_participants_by_names(names, tournament):
+    participants = list()
+    for name in names:
+
+        participant = Participant.objects.get_or_create(name = name)[0]
+        participants.append(participant)
+
+        Participation.objects.create(
+            tournament = tournament,
+            participant = participant,
+            slot_id = Participation.next_slot_id(tournament))
+
+    return participants
+
+
 def _clear_participants(tournament):
     Participation.objects.filter(tournament = tournament).delete()
 
@@ -742,23 +757,45 @@ class GroupsTest(ModeTestBase, TestCase):
         self.assertIsNone(mode.placements)
 
     def test_required_confirmations_count(self):
+        # Define expected counts (keys are tuples of number of participating users, and number of virtual participants).
         expected_counts = {
-            2: 2,
-            3: 2,
-            4: 3,
-            5: 3,
-            6: 4,
-            7: 4,
-            8: 5,
+
+            # Tests without virtual participants.
+            (2, 0): 2,
+            (3, 0): 2,
+            (4, 0): 3,
+            (5, 0): 3,
+            (6, 0): 4,
+            (7, 0): 4,
+            (8, 0): 5,
+
+            # Tests with 1 virtual participant.
+            (1, 1): 1,
+            (2, 1): 2,
+            (3, 1): 2,
+            (4, 1): 3,
+            (5, 1): 3,
+            (6, 1): 4,
+            (7, 1): 4,
+
+            # Tests with 2 virtual participant.
+            (1, 2): 1,
+            (2, 2): 2,
+            (3, 2): 2,
+            (4, 2): 3,
+            (5, 2): 3,
+            (6, 2): 4,
+            (7, 2): 4,
         }
-        for n in range(2, 9):
-            with self.subTest(n = n):
+        for (n, m), expected_count in expected_counts.items():
+            with self.subTest(n = n, m = m):
                 mode = Groups.objects.create(tournament = self.tournament, min_group_size = 2, max_group_size = 3)
                 self.clear_participants(self.tournament)
                 participants = self.add_participants(self.tournament, n)
+                participants.extend(_add_participants_by_names([f'virtual-{i}' for i in range(m)], self.tournament))
                 mode.create_fixtures(participants)
-                #for fixture in mode.fixtures.all():
-                #    self.assertEqual(fixture.required_confirmations_count, expected_counts[n])
+                for fixture in mode.fixtures.all():
+                    self.assertEqual(fixture.required_confirmations_count, expected_count)
 
 class KnockoutTest(ModeTestBase, TestCase):
 
