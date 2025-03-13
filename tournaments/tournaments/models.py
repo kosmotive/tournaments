@@ -218,6 +218,13 @@ class Participant(models.Model):
     @staticmethod
     def create_for_user(user):
         return Participant.objects.create(user = user, name = user.username)
+    
+    @staticmethod
+    def get_or_create_for_user(user):
+        try:
+            return Participant.objects.get(user)
+        except Participant.DoesNotExist:
+            return Participant.create_for_user(user)
 
     def __str__(self):
         return self.name

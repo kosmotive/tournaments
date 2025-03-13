@@ -270,17 +270,36 @@ class ManageParticipantsView(IsCreatorMixin, SingleObjectMixin, VersionInfoMixin
         self.object = self.get_object()
         participant_names = request.POST.get('participant_names')
         if participant_names:
-            participant_names_list = participant_names.splitlines()
+            participant_names_list = filter(lambda s: len(s) > 0, map(lambda s: s.strip(), participant_names.splitlines()))
+
+            # Remove participations that are no longer on the list.
+            for participation in list(self.object.participations.all()):
+                if participation.participant.name not in participant_names_list:
+                    participation.delete()
+
+            # Remove participants that are no longer part of any tournament, and not associated with any user.
+            models.Participant.objects.filter(participation__isnull = True, user__isnull = True).delete()
+
+            # Create new participants and participations.
             for participant_name in participant_names_list:
-                participant, created = models.Participant.objects.get_or_create(name = participant_name)
+
+                # Check whether there is a user with the same name.
+                if models.User.objects.filter(username = participant_name).exists():
+                    user = models.User.objects.get(username = participant_name)
+                    participant = models.Participant.get_or_create_for_user(user)
+                else:
+                    participant = models.Participant.objects.get_or_create(name = participant_name)[0]
+
+                # Create a participation only if it does not already exist.
                 if not self.object.participations.filter(participant = participant).exists():
                     models.Participation.objects.create(
                         tournament = self.object,
                         participant = participant,
                         slot_id = models.Participation.next_slot_id(self.object)
                     )
-            # Automatically delete participants that are not part of any tournament
-            models.Participant.objects.filter(participation__isnull = True, user__isnull = True).delete()
+
+                # TODO: The slots need to be updated according to the order of the participants in the list!
+            
             request.session['alert'] = dict(status = 'success', text = f'Attendees have been updated.')
         return redirect('manage-participants', pk = self.object.id)
 
