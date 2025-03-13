@@ -1595,23 +1595,23 @@ class TournamentTest(TestCase):
         tournament = self.test_load_tournament1()
         self.assertEqual(tournament.current_stage.id, tournament.stages.all()[0].id)
 
-        _add_participating_users(self.participating_users, tournament)
+        participants = _add_participating_users(self.participating_users, tournament)
 
-        tournament.current_stage.create_fixtures(self.participating_users)
+        tournament.current_stage.create_fixtures(participants)
         self.assertEqual(tournament.current_stage.id, tournament.stages.all()[0].id)
 
         for fixture in tournament.current_stage.fixtures.all():
             _confirm_fixture(self.participating_users, fixture)
         self.assertEqual(tournament.current_stage.id, tournament.stages.all()[1].id)
 
-        tournament.current_stage.create_fixtures(self.participating_users)
+        tournament.current_stage.create_fixtures(participants)
         self.assertEqual(tournament.current_stage.id, tournament.stages.all()[1].id)
 
         for fixture in tournament.current_stage.fixtures.all():
             _confirm_fixture(self.participating_users, fixture)
         self.assertEqual(tournament.current_stage.id, tournament.stages.all()[2].id)
 
-        tournament.current_stage.create_fixtures(self.participating_users)
+        tournament.current_stage.create_fixtures(participants)
         self.assertEqual(tournament.current_stage.id, tournament.stages.all()[2].id)
 
         for fixture in tournament.current_stage.fixtures.all():
