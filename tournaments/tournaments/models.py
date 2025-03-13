@@ -64,11 +64,11 @@ class Tournament(models.Model):
 
     @property
     def participants(self):
-        return Participant.objects.filter(participation__tournament = self).order_by('participation__slot_id')
+        return Participant.objects.filter(participations__tournament = self).order_by('participations__slot_id')
 
     @property
     def participating_users(self):
-        return User.objects.filter(participant__participation__tournament = self).order_by('participant__participation__slot_id')
+        return User.objects.filter(participant__participations__tournament = self).order_by('participant__participations__slot_id')
     
     def get_participant(self, *, user = None, name = None):
         assert (user is None) != (name is None)
@@ -213,7 +213,7 @@ def delete_tournament_stages(sender, instance, **kwargs):
 
 class Participant(models.Model):
     user = models.ForeignKey('auth.User', on_delete = models.SET_NULL, related_name = 'participant', null = True, blank = True)
-    name = models.CharField(max_length = 100)
+    name = models.CharField(max_length = 100, unique = True)
 
     @staticmethod
     def create_for_user(user):
@@ -222,7 +222,7 @@ class Participant(models.Model):
     @staticmethod
     def get_or_create_for_user(user):
         try:
-            return Participant.objects.get(user)
+            return Participant.objects.get(user = user)
         except Participant.DoesNotExist:
             return Participant.create_for_user(user)
 
@@ -232,7 +232,7 @@ class Participant(models.Model):
 
 class Participation(models.Model):
 
-    participant = models.ForeignKey('Participant', on_delete = models.CASCADE, related_name = 'participation')
+    participant = models.ForeignKey('Participant', on_delete = models.CASCADE, related_name = 'participations')
     tournament = models.ForeignKey('Tournament', on_delete = models.CASCADE, related_name = 'participations')
     slot_id = models.PositiveIntegerField()
     podium_position = models.PositiveIntegerField(null = True, blank = True)

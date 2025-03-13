@@ -4,7 +4,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
 from django.http import HttpResponseForbidden, HttpResponse
-from django.views.generic import DeleteView, ListView, View
+from django.views.generic import ListView, View
 from django.views.generic.detail import SingleObjectMixin
 from django.views.generic.edit import FormView
 from django.shortcuts import redirect, render
@@ -270,7 +270,7 @@ class ManageParticipantsView(IsCreatorMixin, SingleObjectMixin, VersionInfoMixin
         self.object = self.get_object()
         participant_names = request.POST.get('participant_names')
         if participant_names:
-            participant_names_list = filter(lambda s: len(s) > 0, map(lambda s: s.strip(), participant_names.splitlines()))
+            participant_names_list = list(filter(lambda s: len(s) > 0, map(lambda s: s.strip(), participant_names.splitlines())))
 
             # Remove participations that are no longer on the list.
             for participation in list(self.object.participations.all()):
@@ -278,7 +278,7 @@ class ManageParticipantsView(IsCreatorMixin, SingleObjectMixin, VersionInfoMixin
                     participation.delete()
 
             # Remove participants that are no longer part of any tournament, and not associated with any user.
-            models.Participant.objects.filter(participation__isnull = True, user__isnull = True).delete()
+            models.Participant.objects.annotate(participations_count = Count('participations')).filter(participations_count = 0, user__isnull = True).delete()
 
             # Create new participants and participations.
             for participant_name in participant_names_list:
@@ -298,7 +298,12 @@ class ManageParticipantsView(IsCreatorMixin, SingleObjectMixin, VersionInfoMixin
                         slot_id = models.Participation.next_slot_id(self.object)
                     )
 
-                # TODO: The slots need to be updated according to the order of the participants in the list!
+            # Update slots according to the order of the participants in the list.
+            slot_id0 = models.Participation.next_slot_id(self.object)
+            for pidx, participant_name in enumerate(participant_names_list):
+                participation = self.object.participations.get(participant__name = participant_name)
+                participation.slot_id = slot_id0 + pidx
+                participation.save()
             
             request.session['alert'] = dict(status = 'success', text = f'Attendees have been updated.')
         return redirect('manage-participants', pk = self.object.id)
