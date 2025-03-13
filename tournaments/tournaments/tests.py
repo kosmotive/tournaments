@@ -283,10 +283,10 @@ class ModeTestBase:
 class ModeTest(ModeTestBase, TestCase):
 
     def test_participants_default(self):
-        self.add_participants(self.tournament, 8)
+        participants = self.add_participants(self.tournament, 8)
         mode = Mode.objects.create(tournament = self.tournament)
         actual_participants = [p.id for p in mode.participants]
-        expected_participants = [p.id for p in self.participants[:8]]
+        expected_participants = [p.id for p in participants]
         self.assertEqual(actual_participants, expected_participants)
         return mode
 
@@ -337,8 +337,8 @@ class ModeTest(ModeTestBase, TestCase):
 
         # Set p1 and p2 for the finals and let p1 win.
         final = mode1.fixtures.all()[0]
-        final.player1 = User.objects.get(id = p1.id)
-        final.player2 = User.objects.get(id = p2.id)
+        final.player1 = self.tournament.get_participant(user = User.objects.get(id = p1.id))
+        final.player2 = self.tournament.get_participant(user = User.objects.get(id = p2.id))
         self.confirm_fixture(final, 1, 0)
 
         # Verify participants of the next stage.
@@ -454,7 +454,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 0,
                 },
                 {
-                    'participant': self.tournament.get_participant(User.objects.get(id = 3)),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 3)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 0,
@@ -463,7 +463,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 0,
                 },
                 {
-                    'participant': self.tournament.get_participant(User.objects.get(id = 1)),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 1)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 0,
@@ -474,7 +474,7 @@ class GroupsTest(ModeTestBase, TestCase):
             ],
             [
                 {
-                    'participant': self.tournament.get_participant(User.objects.get(id = 4)),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 4)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 0,
@@ -483,7 +483,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 0,
                 },
                 {
-                    'participant': self.tournament.get_participant(User.objects.get(id = 2)),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 2)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 0,
@@ -501,7 +501,7 @@ class GroupsTest(ModeTestBase, TestCase):
         expected_standings = [
             [
                 {
-                    'participant': self.tournament.get_participant(User.objects.get(id = 5)),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 5)),
                     'win_count': 1,
                     'loss_count': 0,
                     'draw_count': 0,
@@ -510,7 +510,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 1,
                 },
                 {
-                    'participant': self.tournament.get_participant(User.objects.get(id = 1)),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 1)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 0,
@@ -519,7 +519,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 0,
                 },
                 {
-                    'participant': self.tournament.get_participant(User.objects.get(id = 3)),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 3)),
                     'win_count': 0,
                     'loss_count': 1,
                     'draw_count': 0,
@@ -530,7 +530,7 @@ class GroupsTest(ModeTestBase, TestCase):
             ],
             [
                 {
-                    'participant': self.tournament.get_participant(User.objects.get(id = 4)),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 4)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 0,
@@ -539,7 +539,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 0,
                 },
                 {
-                    'participant': self.tournament.get_participant(User.objects.get(id = 2)),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 2)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 0,
@@ -557,7 +557,7 @@ class GroupsTest(ModeTestBase, TestCase):
         expected_standings = [
             [
                 {
-                    'participant': self.tournament.get_participant(User.objects.get(id = 5)),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 5)),
                     'win_count': 1,
                     'loss_count': 0,
                     'draw_count': 1,
@@ -566,7 +566,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 1,
                 },
                 {
-                    'participant': self.tournament.get_participant(User.objects.get(id = 1)),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 1)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 1,
@@ -575,7 +575,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 0,
                 },
                 {
-                    'participant': self.tournament.get_participant(User.objects.get(id = 3)),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 3)),
                     'win_count': 0,
                     'loss_count': 1,
                     'draw_count': 0,
@@ -586,7 +586,7 @@ class GroupsTest(ModeTestBase, TestCase):
             ],
             [
                 {
-                    'participant': self.tournament.get_participant(User.objects.get(id = 4)),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 4)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 0,
@@ -595,7 +595,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 0,
                 },
                 {
-                    'participant': self.tournament.get_participant(User.objects.get(id = 2)),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 2)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 0,
@@ -613,7 +613,7 @@ class GroupsTest(ModeTestBase, TestCase):
         expected_standings = [
             [
                 {
-                    'participant': self.tournament.get_participant(User.objects.get(id = 1)),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 1)),
                     'win_count': 1,
                     'loss_count': 0,
                     'draw_count': 1,
@@ -622,7 +622,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 3,
                 },
                 {
-                    'participant': self.tournament.get_participant(User.objects.get(id = 5)),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 5)),
                     'win_count': 1,
                     'loss_count': 0,
                     'draw_count': 1,
@@ -631,7 +631,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 1,
                 },
                 {
-                    'participant': self.tournament.get_participant(User.objects.get(id = 3)),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 3)),
                     'win_count': 0,
                     'loss_count': 2,
                     'draw_count': 0,
@@ -642,7 +642,7 @@ class GroupsTest(ModeTestBase, TestCase):
             ],
             [
                 {
-                    'participant': self.tournament.get_participant(User.objects.get(id = 4)),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 4)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 0,
@@ -651,7 +651,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 0,
                 },
                 {
-                    'participant': self.tournament.get_participant(User.objects.get(id = 2)),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 2)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 0,
@@ -668,7 +668,7 @@ class GroupsTest(ModeTestBase, TestCase):
         expected_standings = [
             [
                 {
-                    'participant': self.tournament.get_participant(User.objects.get(id = 1)),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 1)),
                     'win_count': 1,
                     'loss_count': 0,
                     'draw_count': 1,
@@ -677,7 +677,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 3,
                 },
                 {
-                    'participant': self.tournament.get_participant(User.objects.get(id = 5)),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 5)),
                     'win_count': 1,
                     'loss_count': 0,
                     'draw_count': 1,
@@ -686,7 +686,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 1,
                 },
                 {
-                    'participant': self.tournament.get_participant(User.objects.get(id = 3)),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 3)),
                     'win_count': 0,
                     'loss_count': 2,
                     'draw_count': 0,
@@ -697,7 +697,7 @@ class GroupsTest(ModeTestBase, TestCase):
             ],
             [
                 {
-                    'participant': self.tournament.get_participant(User.objects.get(id = 4)),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 4)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 1,
@@ -706,7 +706,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 0,
                 },
                 {
-                    'participant': self.tournament.get_participant(User.objects.get(id = 2)),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 2)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 1,
@@ -724,15 +724,15 @@ class GroupsTest(ModeTestBase, TestCase):
         mode = self.test_standings()
         expected_placements = [
             [
-                self.tournament.get_participant(User.objects.get(id = 1)),
-                self.tournament.get_participant(User.objects.get(id = 4)),
+                self.tournament.get_participant(user = User.objects.get(id = 1)),
+                self.tournament.get_participant(user = User.objects.get(id = 4)),
             ],
             [
-                self.tournament.get_participant(User.objects.get(id = 5)),
-                self.tournament.get_participant(User.objects.get(id = 2)),
+                self.tournament.get_participant(user = User.objects.get(id = 5)),
+                self.tournament.get_participant(user = User.objects.get(id = 2)),
             ],
             [
-                self.tournament.get_participant(User.objects.get(id = 3)),
+                self.tournament.get_participant(user = User.objects.get(id = 3)),
             ],
         ]
         self.assertEqual(mode.placements, expected_placements)
@@ -955,7 +955,7 @@ class KnockoutTest(ModeTestBase, TestCase):
         self.assertEqual(actual_fixtures, expected_fixtures)
 
         # Propagate 1st seminfal (user-4 vs. user-2).
-        semifinal1 = mode.fixtures.get(player1 = User.objects.get(id = 4), player2 = User.objects.get(id = 2))
+        semifinal1 = mode.fixtures.get(player1 = self.tournament.get_participant(user = User.objects.get(id = 4)), player2 = self.tournament.get_participant(user = User.objects.get(id = 2)))
         semifinal1.score = (12, 10)
         semifinal1.save()
         propagate_ret = mode.propagate(semifinal1)
@@ -971,7 +971,7 @@ class KnockoutTest(ModeTestBase, TestCase):
         self.assertEqual(actual_fixtures, expected_fixtures)
 
         # Propagate 2nd seminfal (user-3 vs. user-1).
-        semifinal2 = mode.fixtures.get(player1 = User.objects.get(id = 3), player2 = User.objects.get(id = 1))
+        semifinal2 = mode.fixtures.get(player1 = self.tournament.get_participant(user = User.objects.get(id = 3)), player2 = self.tournament.get_participant(user = User.objects.get(id = 1)))
         semifinal2.score = (12, 10)
         semifinal2.save()
         propagate_ret = mode.propagate(semifinal2)
@@ -991,7 +991,7 @@ class KnockoutTest(ModeTestBase, TestCase):
         self.assertEqual(actual_fixtures, expected_fixtures)
 
         # Propagate final (user-4 vs. user-3).
-        final = mode.fixtures.get(player1 = User.objects.get(id = 4), player2 = User.objects.get(id = 3))
+        final = mode.fixtures.get(player1 = self.tournament.get_participant(user = User.objects.get(id = 4)), player2 = self.tournament.get_participant(user = User.objects.get(id = 3)))
         final.score = (12, 10)
         final.save()
         propagate_ret = mode.propagate(final)
@@ -1260,7 +1260,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_get_level_size(self):
         mode = Knockout.objects.create(tournament = self.tournament)
-        mode.create_fixtures(self.participants[:16])
+        participants = self.add_participants(self.tournament, 16)
+        mode.create_fixtures(participants)
 
         self.assertEqual(mode.get_level_size(0), 16)
         self.assertEqual(mode.get_level_size(1),  8)
@@ -1269,7 +1270,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_double_elimination_get_level_size(self):
         mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
-        mode.create_fixtures(self.participants[:16])
+        participants = self.add_participants(self.tournament, 16)
+        mode.create_fixtures(participants)
 
         self.assertEqual(mode.get_level_size(0), 16)
         self.assertEqual(mode.get_level_size(1),  8)
@@ -1282,7 +1284,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_get_level_name_16participants(self):
         mode = Knockout.objects.create(tournament = self.tournament)
-        mode.create_fixtures(self.participants[:16])
+        participants = self.add_participants(self.tournament, 16)
+        mode.create_fixtures(participants)
 
         self.assertEqual(mode.get_level_name(0), 'Last 16')
         self.assertEqual(mode.get_level_name(1), 'Quarter Finals')
@@ -1291,7 +1294,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_get_level_name_10participants(self):
         mode = Knockout.objects.create(tournament = self.tournament)
-        mode.create_fixtures(self.participants[:10])
+        participants = self.add_participants(self.tournament, 10)
+        mode.create_fixtures(participants)
 
         self.assertEqual(mode.get_level_name(0), 'Playoffs')
         self.assertEqual(mode.get_level_name(1), 'Quarter Finals')
@@ -1300,7 +1304,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_double_elimination_get_level_name_16participants(self):
         mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
-        mode.create_fixtures(self.participants[:16])
+        participants = self.add_participants(self.tournament, 16)
+        mode.create_fixtures(participants)
 
         self.assertEqual(mode.get_level_name(0), 'Last 16')
         self.assertEqual(mode.get_level_name(1), '1st Quarter Finals')
@@ -1313,7 +1318,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_double_elimination_get_level_name_10participants(self):
         mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
-        mode.create_fixtures(self.participants[:10])
+        participants = self.add_participants(self.tournament, 10)
+        mode.create_fixtures(participants)
 
         self.assertEqual(mode.get_level_name(0), 'Playoffs')
         self.assertEqual(mode.get_level_name(1), 'Quarter Finals')
@@ -1325,7 +1331,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_double_elimination_get_level_name_8participants(self):
         mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
-        mode.create_fixtures(self.participants[:8])
+        participants = self.add_participants(self.tournament, 8)
+        mode.create_fixtures(participants)
 
         self.assertEqual(mode.get_level_name(0), 'Quarter Finals')
         self.assertEqual(mode.get_level_name(1), '1st Semifinals')

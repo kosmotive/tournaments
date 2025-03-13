@@ -70,7 +70,7 @@ class Tournament(models.Model):
     def participating_users(self):
         return User.objects.filter(participant__participation__tournament = self).order_by('participant__participation__slot_id')
     
-    def get_participant(self, user = None, name = None):
+    def get_participant(self, *, user = None, name = None):
         assert (user is None) != (name is None)
         if user is not None:
             return self.participants.get(user = user)
