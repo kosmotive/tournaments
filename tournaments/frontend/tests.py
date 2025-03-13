@@ -611,7 +611,7 @@ class TournamentProgressViewTests(TestCase):
         self.tournament1 = models.Tournament.load(definition = test_tournament1_yml, name = 'Test1', creator = self.user1, published = True)
         self.tournament2 = models.Tournament.load(definition = test_tournament1_yml, name = 'Test2', creator = self.user2, published = True)
 
-        self.users = add_participants(self.tournament1, users = 10)
+        self.users = add_participants(self.tournament1, num_users = 10)
 
     def test_unauthenticated_open(self):
         """
@@ -652,7 +652,7 @@ class TournamentProgressViewTests(TestCase):
         Starting a tournament created by the user yields 412 (precondition failed) if there are fewer than 3 participators.
         """
         self.client.force_login(self.user2)
-        add_participants(self.tournament2, users = 2)
+        add_participants(self.tournament2, num_users = 2)
         response = self.client.get(reverse('tournament-progress', kwargs = dict(pk = self.tournament2.id)))
         self.assertEqual(response.status_code, 412)
 
@@ -661,7 +661,7 @@ class TournamentProgressViewTests(TestCase):
         Starting a tournament created by the user fails if `Tournament.test` checking fails.
         """
         self.client.force_login(self.user2)
-        add_participants(self.tournament2, users = 4)
+        add_participants(self.tournament2, num_users = 4)
         response = self.client.get(reverse('tournament-progress', kwargs = dict(pk = self.tournament2.id)), follow = True)
         self.assertEqual(response.status_code, 200)
         self.assertIs(response.resolver_match.func.view_class, views.UpdateTournamentView)
@@ -672,7 +672,7 @@ class TournamentProgressViewTests(TestCase):
         Starting a tournament created by the user fails if `Tournament.test` checking fails.
         """
         self.client.force_login(self.user2)
-        add_participants(self.tournament2, users = 5)
+        add_participants(self.tournament2, num_users = 5)
         response = self.client.get(reverse('tournament-progress', kwargs = dict(pk = self.tournament2.id)), follow = True)
         self.assertEqual(response.status_code, 200)
         self.assertIs(response.resolver_match.func.view_class, views.UpdateTournamentView)

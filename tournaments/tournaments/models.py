@@ -136,7 +136,7 @@ class Tournament(models.Model):
 
     @property
     def podium(self):
-        return Participant.objects.filter(participation__tournament = self, participation__podium_position__isnull = False).order_by('participation__podium_position')
+        return Participant.objects.filter(participations__tournament = self, participations__podium_position__isnull = False).order_by('participations__podium_position')
 
     def _get_podium(self):
         podium = list()

@@ -220,7 +220,7 @@ def _add_participating_users(participating_users_pool, tournament):
     participants = list()
     for user in participating_users_pool:
 
-        participant = Participant.create_for_user(user)
+        participant = Participant.get_or_create_for_user(user)
         participants.append(participant)
 
         Participation.objects.create(
