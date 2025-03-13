@@ -793,7 +793,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_2participants(self):
         mode = Knockout.objects.create(tournament = self.tournament)
-        mode.create_fixtures(self.participants[:2])
+        participants = self.add_participants(self.tournament, 2)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures = self.group_fixtures_by_level(mode)
@@ -806,7 +807,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_3participants(self):
         mode = Knockout.objects.create(tournament = self.tournament)
-        mode.create_fixtures(self.participants[:3])
+        participants = self.add_participants(self.tournament, 3)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures = self.group_fixtures_by_level(mode)
@@ -818,7 +820,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_4participants(self):
         mode = Knockout.objects.create(tournament = self.tournament)
-        mode.create_fixtures(self.participants[:4])
+        participants = self.add_participants(self.tournament, 4)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures = self.group_fixtures_by_level(mode)
@@ -830,7 +833,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_5participants(self):
         mode = Knockout.objects.create(tournament = self.tournament)
-        mode.create_fixtures(self.participants[:5])
+        participants = self.add_participants(self.tournament, 5)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures = self.group_fixtures_by_level(mode)
@@ -845,7 +849,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_6participants(self):
         mode = Knockout.objects.create(tournament = self.tournament)
-        mode.create_fixtures(self.participants[:6])
+        participants = self.add_participants(self.tournament, 6)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures = self.group_fixtures_by_level(mode)
@@ -858,7 +863,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_7participants(self):
         mode = Knockout.objects.create(tournament = self.tournament)
-        mode.create_fixtures(self.participants[:7])
+        participants = self.add_participants(self.tournament, 7)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures = self.group_fixtures_by_level(mode)
@@ -871,7 +877,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_8participants(self):
         mode = Knockout.objects.create(tournament = self.tournament)
-        mode.create_fixtures(self.participants[:8])
+        participants = self.add_participants(self.tournament, 8)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures = self.group_fixtures_by_level(mode)
@@ -884,7 +891,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_9participants(self):
         mode = Knockout.objects.create(tournament = self.tournament)
-        mode.create_fixtures(self.participants[:9])
+        participants = self.add_participants(self.tournament, 9)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures = self.group_fixtures_by_level(mode)
@@ -898,7 +906,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_16participants(self):
         mode = Knockout.objects.create(tournament = self.tournament)
-        mode.create_fixtures(self.participants[:16])
+        participants = self.add_participants(self.tournament, 16)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures = self.group_fixtures_by_level(mode)
@@ -1054,7 +1063,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_double_elimination_2participants(self):
         mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
-        mode.create_fixtures(self.participants[:2])
+        participants = self.add_participants(self.tournament, 2)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
@@ -1071,7 +1081,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_double_elimination_3participants(self):
         mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
-        mode.create_fixtures(self.participants[:3])
+        participants = self.add_participants(self.tournament, 3)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
@@ -1089,7 +1100,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_double_elimination_4participants(self):
         mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
-        mode.create_fixtures(self.participants[:4])
+        participants = self.add_participants(self.tournament, 4)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
@@ -1108,7 +1120,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_double_elimination_5participants(self):
         mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
-        mode.create_fixtures(self.participants[:5])
+        participants = self.add_participants(self.tournament, 5)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
@@ -1130,7 +1143,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_double_elimination_6participants(self):
         mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
-        mode.create_fixtures(self.participants[:6])
+        participants = self.add_participants(self.tournament, 6)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
@@ -1150,7 +1164,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_double_elimination_7participants(self):
         mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
-        mode.create_fixtures(self.participants[:7])
+        participants = self.add_participants(self.tournament, 7)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
@@ -1170,7 +1185,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_double_elimination_8participants(self):
         mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
-        mode.create_fixtures(self.participants[:8])
+        participants = self.add_participants(self.tournament, 8)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
@@ -1194,7 +1210,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_double_elimination_9participants(self):
         mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
-        mode.create_fixtures(self.participants[:9])
+        participants = self.add_participants(self.tournament, 9)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
@@ -1217,7 +1234,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_double_elimination_16participants(self):
         mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
-        mode.create_fixtures(self.participants[:16])
+        participants = self.add_participants(self.tournament, 16)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
