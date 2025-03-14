@@ -4,6 +4,7 @@ django-polymorphic==3.1.0
 django-crispy-forms==2.1
 crispy-bootstrap4==2023.1
 django-capture-tag==1.0
+django-test-migrations==1.4.0
 sqlparse==0.5.0
 pyyaml==6.0.1
 numpy==1.26.2

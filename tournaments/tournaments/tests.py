@@ -1,24 +1,24 @@
+import numpy as np
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.test import TestCase
-
-import numpy as np
+from django_test_migrations.contrib.unittest_case import MigratorTestCase
 
 from tournaments.models import (
-    split_into_groups,
-    create_division_schedule,
-    parse_placements_str,
-    get_stats,
-    unwrap_list,
-    is_power_of_two,
-    Tournament,
-    Participation,
-    Mode,
+    Fixture,
     Groups,
     Knockout,
-    Fixture,
+    Mode,
+    Participant,
+    Participation,
+    Tournament,
+    create_division_schedule,
+    get_stats,
+    is_power_of_two,
+    parse_placements_str,
+    split_into_groups,
+    unwrap_list,
 )
-
 
 test_tournament1_yml = \
     """
@@ -188,7 +188,6 @@ def assert_division_schedule_validity(test, schedule, with_returns):
         participants = list(np.unique(sum(schedule, list())))
         n = len(participants)
         A = np.zeros((n, n))
-        I = lambda p: participants.index(p)
         for pairings in schedule:
             matchday_participants = set()
             for p1, p2 in pairings:
@@ -196,7 +195,7 @@ def assert_division_schedule_validity(test, schedule, with_returns):
                 test.assertFalse(p1 in matchday_participants, f'{p1} included multiple times in matchday {pairings}')
                 test.assertFalse(p2 in matchday_participants, f'{p2} included multiple times in matchday {pairings}')
 
-                A[I(p1), I(p2)] += 1
+                A[participants.index(p1), participants.index(p2)] += 1
 
                 matchday_participants.add(p1)
                 matchday_participants.add(p2)
@@ -215,22 +214,44 @@ def assert_division_schedule_validity(test, schedule, with_returns):
         raise
 
 
-def _add_participants(participants_pool, tournament):
-    for participant in participants_pool:
+def _add_participating_users(participating_users_pool, tournament):
+    participants = list()
+    for user in participating_users_pool:
+
+        participant = Participant.get_or_create_for_user(user)
+        participants.append(participant)
+
         Participation.objects.create(
-            user = participant,
+            participant = participant,
             tournament = tournament,
             slot_id = Participation.next_slot_id(tournament))
+
+    return participants
+
+
+def _add_participants_by_names(names, tournament):
+    participants = list()
+    for name in names:
+
+        participant = Participant.objects.get_or_create(name = name)[0]
+        participants.append(participant)
+
+        Participation.objects.create(
+            tournament = tournament,
+            participant = participant,
+            slot_id = Participation.next_slot_id(tournament))
+
+    return participants
 
 
 def _clear_participants(tournament):
     Participation.objects.filter(tournament = tournament).delete()
 
 
-def _confirm_fixture(participants, fixture, score1 = 0, score2 = 0):
+def _confirm_fixture(participating_users, fixture, score1 = 0, score2 = 0):
     n = fixture.required_confirmations_count
-    for participant in participants[:n]:
-        fixture.confirmations.add(participant)
+    for user in participating_users[:n]:
+        fixture.confirmations.add(user)
 
     fixture.score = (score1, score2)
     fixture.save()
@@ -240,45 +261,55 @@ class ModeTestBase:
 
     def setUp(self):
         self.tournament = Tournament.objects.create(name = 'Test', podium_spec = list())
-        self.participants = list()
+        self.participating_users = list()
         for user_idx in range(16):
             user = User.objects.create_user(
                 id = user_idx + 1,
                 username = f'user-{user_idx + 1}',
                 password =  'password')
-            self.participants.append(user)
+            self.participating_users.append(user)
 
     def add_participants(self, tournament, number):
-        _add_participants(self.participants[:number], tournament)
+        return _add_participating_users(self.participating_users[:number], tournament)
 
     def clear_participants(self, tournament):
         _clear_participants(tournament)
 
     def confirm_fixture(self, *args, **kwargs):
-        _confirm_fixture(self.participants, *args, **kwargs)
+        _confirm_fixture(self.participating_users, *args, **kwargs)
 
     def group_fixtures_by_level(self, mode, **filters):
         actual_fixtures = dict()
-        pid = lambda p: None if p is None else p.id
+
+        def __get_participant_id(participant):
+            return None if participant is None else participant.id
+        
         exclude_dict = dict()
         for filter_key, filter_val in dict(filters).items():
             if filter_key.endswith('__ne'):
                 exclude_dict[filter_key[:-4]] = filter_val
                 exclude_dict[filter_key[:-4] + '__isnull'] = False
                 del filters[filter_key]
+
         for fixture in mode.fixtures.filter(**filters).exclude(**exclude_dict).all():
             actual_fixtures.setdefault(fixture.level, list())
-            actual_fixtures[fixture.level].append((pid(fixture.player1), pid(fixture.player2)))
+            actual_fixtures[fixture.level].append(
+                (
+                    __get_participant_id(fixture.player1),
+                    __get_participant_id(fixture.player2),
+                ),
+            )
+
         return actual_fixtures
 
 
 class ModeTest(ModeTestBase, TestCase):
 
     def test_participants_default(self):
-        self.add_participants(self.tournament, 8)
+        participants = self.add_participants(self.tournament, 8)
         mode = Mode.objects.create(tournament = self.tournament)
         actual_participants = [p.id for p in mode.participants]
-        expected_participants = [p.id for p in self.participants[:8]]
+        expected_participants = [p.id for p in participants]
         self.assertEqual(actual_participants, expected_participants)
         return mode
 
@@ -329,8 +360,8 @@ class ModeTest(ModeTestBase, TestCase):
 
         # Set p1 and p2 for the finals and let p1 win.
         final = mode1.fixtures.all()[0]
-        final.player1 = User.objects.get(id = p1.id)
-        final.player2 = User.objects.get(id = p2.id)
+        final.player1 = self.tournament.get_participant(user = User.objects.get(id = p1.id))
+        final.player2 = self.tournament.get_participant(user = User.objects.get(id = p2.id))
         self.confirm_fixture(final, 1, 0)
 
         # Verify participants of the next stage.
@@ -343,7 +374,8 @@ class GroupsTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_minimal(self):
         mode = Groups.objects.create(tournament = self.tournament, min_group_size = 2, max_group_size = 2)
-        mode.create_fixtures(self.participants[:2])
+        participants = self.add_participants(self.tournament, 2)
+        mode.create_fixtures(participants)
 
         # Verify groups.
         actual_groups_info = mode.groups_info
@@ -361,7 +393,8 @@ class GroupsTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_extended(self):
         mode = Groups.objects.create(tournament = self.tournament, min_group_size = 2, max_group_size = 3)
-        mode.create_fixtures(self.participants[:5])
+        participants = self.add_participants(self.tournament, 5)
+        mode.create_fixtures(participants)
 
         # Verify groups.
         actual_groups_info = mode.groups_info
@@ -429,13 +462,12 @@ class GroupsTest(ModeTestBase, TestCase):
 
     def test_standings(self):
         mode = self.test_create_fixtures_extended()
-        self.add_participants(self.tournament, 5)
 
         # Test on level 0 (no scores yet).
         expected_standings = [
             [
                 {
-                    'participant': User.objects.get(id = 5),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 5)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 0,
@@ -444,7 +476,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 0,
                 },
                 {
-                    'participant': User.objects.get(id = 3),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 3)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 0,
@@ -453,7 +485,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 0,
                 },
                 {
-                    'participant': User.objects.get(id = 1),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 1)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 0,
@@ -464,7 +496,7 @@ class GroupsTest(ModeTestBase, TestCase):
             ],
             [
                 {
-                    'participant': User.objects.get(id = 4),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 4)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 0,
@@ -473,7 +505,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 0,
                 },
                 {
-                    'participant': User.objects.get(id = 2),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 2)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 0,
@@ -491,7 +523,7 @@ class GroupsTest(ModeTestBase, TestCase):
         expected_standings = [
             [
                 {
-                    'participant': User.objects.get(id = 5),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 5)),
                     'win_count': 1,
                     'loss_count': 0,
                     'draw_count': 0,
@@ -500,7 +532,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 1,
                 },
                 {
-                    'participant': User.objects.get(id = 1),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 1)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 0,
@@ -509,7 +541,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 0,
                 },
                 {
-                    'participant': User.objects.get(id = 3),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 3)),
                     'win_count': 0,
                     'loss_count': 1,
                     'draw_count': 0,
@@ -520,7 +552,7 @@ class GroupsTest(ModeTestBase, TestCase):
             ],
             [
                 {
-                    'participant': User.objects.get(id = 4),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 4)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 0,
@@ -529,7 +561,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 0,
                 },
                 {
-                    'participant': User.objects.get(id = 2),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 2)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 0,
@@ -547,7 +579,7 @@ class GroupsTest(ModeTestBase, TestCase):
         expected_standings = [
             [
                 {
-                    'participant': User.objects.get(id = 5),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 5)),
                     'win_count': 1,
                     'loss_count': 0,
                     'draw_count': 1,
@@ -556,7 +588,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 1,
                 },
                 {
-                    'participant': User.objects.get(id = 1),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 1)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 1,
@@ -565,7 +597,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 0,
                 },
                 {
-                    'participant': User.objects.get(id = 3),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 3)),
                     'win_count': 0,
                     'loss_count': 1,
                     'draw_count': 0,
@@ -576,7 +608,7 @@ class GroupsTest(ModeTestBase, TestCase):
             ],
             [
                 {
-                    'participant': User.objects.get(id = 4),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 4)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 0,
@@ -585,7 +617,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 0,
                 },
                 {
-                    'participant': User.objects.get(id = 2),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 2)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 0,
@@ -603,7 +635,7 @@ class GroupsTest(ModeTestBase, TestCase):
         expected_standings = [
             [
                 {
-                    'participant': User.objects.get(id = 1),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 1)),
                     'win_count': 1,
                     'loss_count': 0,
                     'draw_count': 1,
@@ -612,7 +644,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 3,
                 },
                 {
-                    'participant': User.objects.get(id = 5),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 5)),
                     'win_count': 1,
                     'loss_count': 0,
                     'draw_count': 1,
@@ -621,7 +653,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 1,
                 },
                 {
-                    'participant': User.objects.get(id = 3),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 3)),
                     'win_count': 0,
                     'loss_count': 2,
                     'draw_count': 0,
@@ -632,7 +664,7 @@ class GroupsTest(ModeTestBase, TestCase):
             ],
             [
                 {
-                    'participant': User.objects.get(id = 4),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 4)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 0,
@@ -641,7 +673,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 0,
                 },
                 {
-                    'participant': User.objects.get(id = 2),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 2)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 0,
@@ -658,7 +690,7 @@ class GroupsTest(ModeTestBase, TestCase):
         expected_standings = [
             [
                 {
-                    'participant': User.objects.get(id = 1),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 1)),
                     'win_count': 1,
                     'loss_count': 0,
                     'draw_count': 1,
@@ -667,7 +699,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 3,
                 },
                 {
-                    'participant': User.objects.get(id = 5),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 5)),
                     'win_count': 1,
                     'loss_count': 0,
                     'draw_count': 1,
@@ -676,7 +708,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 1,
                 },
                 {
-                    'participant': User.objects.get(id = 3),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 3)),
                     'win_count': 0,
                     'loss_count': 2,
                     'draw_count': 0,
@@ -687,7 +719,7 @@ class GroupsTest(ModeTestBase, TestCase):
             ],
             [
                 {
-                    'participant': User.objects.get(id = 4),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 4)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 1,
@@ -696,7 +728,7 @@ class GroupsTest(ModeTestBase, TestCase):
                     'balance': 0,
                 },
                 {
-                    'participant': User.objects.get(id = 2),
+                    'participant': self.tournament.get_participant(user = User.objects.get(id = 2)),
                     'win_count': 0,
                     'loss_count': 0,
                     'draw_count': 1,
@@ -714,15 +746,15 @@ class GroupsTest(ModeTestBase, TestCase):
         mode = self.test_standings()
         expected_placements = [
             [
-                User.objects.get(id = 1),
-                User.objects.get(id = 4),
+                self.tournament.get_participant(user = User.objects.get(id = 1)),
+                self.tournament.get_participant(user = User.objects.get(id = 4)),
             ],
             [
-                User.objects.get(id = 5),
-                User.objects.get(id = 2),
+                self.tournament.get_participant(user = User.objects.get(id = 5)),
+                self.tournament.get_participant(user = User.objects.get(id = 2)),
             ],
             [
-                User.objects.get(id = 3),
+                self.tournament.get_participant(user = User.objects.get(id = 3)),
             ],
         ]
         self.assertEqual(mode.placements, expected_placements)
@@ -732,23 +764,54 @@ class GroupsTest(ModeTestBase, TestCase):
         self.assertIsNone(mode.placements)
 
     def test_required_confirmations_count(self):
+        # Define expected counts (keys are tuples of number of participating users, and number of virtual participants).
         expected_counts = {
-            2: 2,
-            3: 2,
-            4: 3,
-            5: 3,
-            6: 4,
-            7: 4,
-            8: 5,
+
+            # Tests without virtual participants.
+            (2, 0): 2,
+            (3, 0): 2,
+            (4, 0): 3,
+            (5, 0): 3,
+            (6, 0): 4,
+            (7, 0): 4,
+            (8, 0): 5,
+
+            # Tests with 1 virtual participant.
+            (1, 1): 1,
+            (2, 1): 2,
+            (3, 1): 2,
+            (4, 1): 3,
+            (5, 1): 3,
+            (6, 1): 4,
+            (7, 1): 4,
+
+            # Tests with 2 virtual participant.
+            (1, 2): 1,
+            (2, 2): 2,
+            (3, 2): 2,
+            (4, 2): 3,
+            (5, 2): 3,
+            (6, 2): 4,
+            (7, 2): 4,
+
+            # Tests without user participants.
+            (0, 2): 1,
+            (0, 3): 1,
+            (0, 4): 1,
+            (0, 5): 1,
+            (0, 6): 1,
+            (0, 7): 1,
+            (0, 8): 1,
         }
-        for n in range(2, 9):
-            with self.subTest(n = n):
+        for (n, m), expected_count in expected_counts.items():
+            with self.subTest(n = n, m = m):
                 mode = Groups.objects.create(tournament = self.tournament, min_group_size = 2, max_group_size = 3)
                 self.clear_participants(self.tournament)
-                self.add_participants(self.tournament, n)
-                mode.create_fixtures(self.participants[:n])
+                participants = self.add_participants(self.tournament, n)
+                participants.extend(_add_participants_by_names([f'virtual-{i}' for i in range(m)], self.tournament))
+                mode.create_fixtures(participants)
                 for fixture in mode.fixtures.all():
-                    self.assertEqual(fixture.required_confirmations_count, expected_counts[n])
+                    self.assertEqual(fixture.required_confirmations_count, expected_count)
 
 class KnockoutTest(ModeTestBase, TestCase):
 
@@ -783,7 +846,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_2participants(self):
         mode = Knockout.objects.create(tournament = self.tournament)
-        mode.create_fixtures(self.participants[:2])
+        participants = self.add_participants(self.tournament, 2)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures = self.group_fixtures_by_level(mode)
@@ -796,7 +860,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_3participants(self):
         mode = Knockout.objects.create(tournament = self.tournament)
-        mode.create_fixtures(self.participants[:3])
+        participants = self.add_participants(self.tournament, 3)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures = self.group_fixtures_by_level(mode)
@@ -808,7 +873,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_4participants(self):
         mode = Knockout.objects.create(tournament = self.tournament)
-        mode.create_fixtures(self.participants[:4])
+        participants = self.add_participants(self.tournament, 4)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures = self.group_fixtures_by_level(mode)
@@ -820,7 +886,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_5participants(self):
         mode = Knockout.objects.create(tournament = self.tournament)
-        mode.create_fixtures(self.participants[:5])
+        participants = self.add_participants(self.tournament, 5)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures = self.group_fixtures_by_level(mode)
@@ -835,7 +902,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_6participants(self):
         mode = Knockout.objects.create(tournament = self.tournament)
-        mode.create_fixtures(self.participants[:6])
+        participants = self.add_participants(self.tournament, 6)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures = self.group_fixtures_by_level(mode)
@@ -848,7 +916,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_7participants(self):
         mode = Knockout.objects.create(tournament = self.tournament)
-        mode.create_fixtures(self.participants[:7])
+        participants = self.add_participants(self.tournament, 7)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures = self.group_fixtures_by_level(mode)
@@ -861,7 +930,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_8participants(self):
         mode = Knockout.objects.create(tournament = self.tournament)
-        mode.create_fixtures(self.participants[:8])
+        participants = self.add_participants(self.tournament, 8)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures = self.group_fixtures_by_level(mode)
@@ -874,7 +944,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_9participants(self):
         mode = Knockout.objects.create(tournament = self.tournament)
-        mode.create_fixtures(self.participants[:9])
+        participants = self.add_participants(self.tournament, 9)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures = self.group_fixtures_by_level(mode)
@@ -888,7 +959,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_16participants(self):
         mode = Knockout.objects.create(tournament = self.tournament)
-        mode.create_fixtures(self.participants[:16])
+        participants = self.add_participants(self.tournament, 16)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures = self.group_fixtures_by_level(mode)
@@ -936,7 +1008,7 @@ class KnockoutTest(ModeTestBase, TestCase):
         self.assertEqual(actual_fixtures, expected_fixtures)
 
         # Propagate 1st seminfal (user-4 vs. user-2).
-        semifinal1 = mode.fixtures.get(player1 = User.objects.get(id = 4), player2 = User.objects.get(id = 2))
+        semifinal1 = mode.fixtures.get(player1 = self.tournament.get_participant(user = User.objects.get(id = 4)), player2 = self.tournament.get_participant(user = User.objects.get(id = 2)))
         semifinal1.score = (12, 10)
         semifinal1.save()
         propagate_ret = mode.propagate(semifinal1)
@@ -952,7 +1024,7 @@ class KnockoutTest(ModeTestBase, TestCase):
         self.assertEqual(actual_fixtures, expected_fixtures)
 
         # Propagate 2nd seminfal (user-3 vs. user-1).
-        semifinal2 = mode.fixtures.get(player1 = User.objects.get(id = 3), player2 = User.objects.get(id = 1))
+        semifinal2 = mode.fixtures.get(player1 = self.tournament.get_participant(user = User.objects.get(id = 3)), player2 = self.tournament.get_participant(user = User.objects.get(id = 1)))
         semifinal2.score = (12, 10)
         semifinal2.save()
         propagate_ret = mode.propagate(semifinal2)
@@ -972,7 +1044,7 @@ class KnockoutTest(ModeTestBase, TestCase):
         self.assertEqual(actual_fixtures, expected_fixtures)
 
         # Propagate final (user-4 vs. user-3).
-        final = mode.fixtures.get(player1 = User.objects.get(id = 4), player2 = User.objects.get(id = 3))
+        final = mode.fixtures.get(player1 = self.tournament.get_participant(user = User.objects.get(id = 4)), player2 = self.tournament.get_participant(user = User.objects.get(id = 3)))
         final.score = (12, 10)
         final.save()
         propagate_ret = mode.propagate(final)
@@ -1044,7 +1116,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_double_elimination_2participants(self):
         mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
-        mode.create_fixtures(self.participants[:2])
+        participants = self.add_participants(self.tournament, 2)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
@@ -1061,7 +1134,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_double_elimination_3participants(self):
         mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
-        mode.create_fixtures(self.participants[:3])
+        participants = self.add_participants(self.tournament, 3)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
@@ -1079,7 +1153,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_double_elimination_4participants(self):
         mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
-        mode.create_fixtures(self.participants[:4])
+        participants = self.add_participants(self.tournament, 4)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
@@ -1098,7 +1173,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_double_elimination_5participants(self):
         mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
-        mode.create_fixtures(self.participants[:5])
+        participants = self.add_participants(self.tournament, 5)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
@@ -1120,7 +1196,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_double_elimination_6participants(self):
         mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
-        mode.create_fixtures(self.participants[:6])
+        participants = self.add_participants(self.tournament, 6)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
@@ -1140,7 +1217,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_double_elimination_7participants(self):
         mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
-        mode.create_fixtures(self.participants[:7])
+        participants = self.add_participants(self.tournament, 7)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
@@ -1160,7 +1238,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_double_elimination_8participants(self):
         mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
-        mode.create_fixtures(self.participants[:8])
+        participants = self.add_participants(self.tournament, 8)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
@@ -1184,7 +1263,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_double_elimination_9participants(self):
         mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
-        mode.create_fixtures(self.participants[:9])
+        participants = self.add_participants(self.tournament, 9)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
@@ -1207,7 +1287,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_create_fixtures_double_elimination_16participants(self):
         mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
-        mode.create_fixtures(self.participants[:16])
+        participants = self.add_participants(self.tournament, 16)
+        mode.create_fixtures(participants)
 
         # Verify fixtures.
         actual_fixtures1 = self.group_fixtures_by_level(mode, extras__tree__ne = 2)
@@ -1232,7 +1313,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_get_level_size(self):
         mode = Knockout.objects.create(tournament = self.tournament)
-        mode.create_fixtures(self.participants[:16])
+        participants = self.add_participants(self.tournament, 16)
+        mode.create_fixtures(participants)
 
         self.assertEqual(mode.get_level_size(0), 16)
         self.assertEqual(mode.get_level_size(1),  8)
@@ -1241,7 +1323,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_double_elimination_get_level_size(self):
         mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
-        mode.create_fixtures(self.participants[:16])
+        participants = self.add_participants(self.tournament, 16)
+        mode.create_fixtures(participants)
 
         self.assertEqual(mode.get_level_size(0), 16)
         self.assertEqual(mode.get_level_size(1),  8)
@@ -1254,7 +1337,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_get_level_name_16participants(self):
         mode = Knockout.objects.create(tournament = self.tournament)
-        mode.create_fixtures(self.participants[:16])
+        participants = self.add_participants(self.tournament, 16)
+        mode.create_fixtures(participants)
 
         self.assertEqual(mode.get_level_name(0), 'Last 16')
         self.assertEqual(mode.get_level_name(1), 'Quarter Finals')
@@ -1263,7 +1347,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_get_level_name_10participants(self):
         mode = Knockout.objects.create(tournament = self.tournament)
-        mode.create_fixtures(self.participants[:10])
+        participants = self.add_participants(self.tournament, 10)
+        mode.create_fixtures(participants)
 
         self.assertEqual(mode.get_level_name(0), 'Playoffs')
         self.assertEqual(mode.get_level_name(1), 'Quarter Finals')
@@ -1272,7 +1357,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_double_elimination_get_level_name_16participants(self):
         mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
-        mode.create_fixtures(self.participants[:16])
+        participants = self.add_participants(self.tournament, 16)
+        mode.create_fixtures(participants)
 
         self.assertEqual(mode.get_level_name(0), 'Last 16')
         self.assertEqual(mode.get_level_name(1), '1st Quarter Finals')
@@ -1285,7 +1371,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_double_elimination_get_level_name_10participants(self):
         mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
-        mode.create_fixtures(self.participants[:10])
+        participants = self.add_participants(self.tournament, 10)
+        mode.create_fixtures(participants)
 
         self.assertEqual(mode.get_level_name(0), 'Playoffs')
         self.assertEqual(mode.get_level_name(1), 'Quarter Finals')
@@ -1297,7 +1384,8 @@ class KnockoutTest(ModeTestBase, TestCase):
 
     def test_double_elimination_get_level_name_8participants(self):
         mode = Knockout.objects.create(tournament = self.tournament, double_elimination = True)
-        mode.create_fixtures(self.participants[:8])
+        participants = self.add_participants(self.tournament, 8)
+        mode.create_fixtures(participants)
 
         self.assertEqual(mode.get_level_name(0), 'Quarter Finals')
         self.assertEqual(mode.get_level_name(1), '1st Semifinals')
@@ -1469,7 +1557,12 @@ class FixtureTest(TestCase):
                 password =  'password')
             for user_idx in range(2)
         ]
-        self.fixture = Fixture.objects.create(mode = self.knockout, level = 0, player1 = self.players[0], player2 = self.players[1])
+        self.fixture = Fixture.objects.create(
+            mode = self.knockout,
+            level = 0,
+            player1 = Participant.create_for_user(self.players[0]),
+            player2 = Participant.create_for_user(self.players[1]),
+        )
 
     def test_score(self):
         self.assertEqual(self.fixture.score, (None, None))
@@ -1500,7 +1593,7 @@ class FixtureTest(TestCase):
 class TournamentTest(TestCase):
 
     def setUp(self):
-        self.participants = [
+        self.participating_users = [
             User.objects.create(
                 id = user_idx + 1,
                 username = f'user-{user_idx + 1}',
@@ -1536,10 +1629,10 @@ class TournamentTest(TestCase):
 
     def test_shuffle_participants(self, repeat = 0):
         tournament = self.test_load_tournament1()
-        _add_participants(self.participants, tournament)
+        _add_participating_users(self.participating_users, tournament)
         permutations = list()
         original_participants = tuple([p.id for p in tournament.participants])
-        for itr in range(repeat + 1):
+        for _ in range(repeat + 1):
             tournament.shuffle_participants()
             actual_participants = tuple([p.id for p in tournament.participants])
             self.assertNotIn(actual_participants, permutations)
@@ -1555,32 +1648,32 @@ class TournamentTest(TestCase):
         tournament = self.test_load_tournament1()
         self.assertEqual(tournament.current_stage.id, tournament.stages.all()[0].id)
 
-        _add_participants(self.participants, tournament)
+        participants = _add_participating_users(self.participating_users, tournament)
 
-        tournament.current_stage.create_fixtures(self.participants)
+        tournament.current_stage.create_fixtures(participants)
         self.assertEqual(tournament.current_stage.id, tournament.stages.all()[0].id)
 
         for fixture in tournament.current_stage.fixtures.all():
-            _confirm_fixture(self.participants, fixture)
+            _confirm_fixture(self.participating_users, fixture)
         self.assertEqual(tournament.current_stage.id, tournament.stages.all()[1].id)
 
-        tournament.current_stage.create_fixtures(self.participants)
+        tournament.current_stage.create_fixtures(participants)
         self.assertEqual(tournament.current_stage.id, tournament.stages.all()[1].id)
 
         for fixture in tournament.current_stage.fixtures.all():
-            _confirm_fixture(self.participants, fixture)
+            _confirm_fixture(self.participating_users, fixture)
         self.assertEqual(tournament.current_stage.id, tournament.stages.all()[2].id)
 
-        tournament.current_stage.create_fixtures(self.participants)
+        tournament.current_stage.create_fixtures(participants)
         self.assertEqual(tournament.current_stage.id, tournament.stages.all()[2].id)
 
         for fixture in tournament.current_stage.fixtures.all():
-            _confirm_fixture(self.participants, fixture)
+            _confirm_fixture(self.participating_users, fixture)
         self.assertIsNone(tournament.current_stage)
 
     def test_update_state(self):
         tournament = self.test_load_tournament1()
-        _add_participants(self.participants, tournament)
+        _add_participating_users(self.participating_users, tournament)
         tournament.update_state()
 
         # Play through the tournament, always make the participant with the higher ID win.
@@ -1589,7 +1682,7 @@ class TournamentTest(TestCase):
             # Play the current level, then update the tournament state.
             for fixture in tournament.current_stage.current_fixtures:
 
-                _confirm_fixture(self.participants, fixture, score1 = fixture.player1.id, score2 = fixture.player2.id)
+                _confirm_fixture(self.participating_users, fixture, score1 = fixture.player1.id, score2 = fixture.player2.id)
 
             tournament.update_state()
 
@@ -1695,3 +1788,36 @@ class TournamentTest(TestCase):
         tournament.full_clean()
         tournament.stages.all()[0].full_clean()
         self.assertRaises(ValidationError, tournament.stages.all()[1].full_clean)
+
+
+class MigrationTest_0002_to_0003(MigratorTestCase):
+
+    migrate_from = ('tournaments', '0002_remove_fixture_position_fixture_extras')
+    migrate_to   = ('tournaments', '0003_participant_alter_participation_unique_together_and_more')
+
+    usernames1   = [f'user-{uidx}' for uidx in range(8)]  # Users attending tournament 1
+    usernames2   = [f'user-{uidx}' for uidx in range(4)]  # Users attending tournament 2
+
+    def prepare(self):
+        OldTournament    = self.old_state.apps.get_model('tournaments', 'Tournament')
+        OldParticipation = self.old_state.apps.get_model('tournaments', 'Participation')
+        OldUser          = self.old_state.apps.get_model('auth', 'User')
+
+        tournaments = [
+            OldTournament.objects.create(name = f'Test Cup {tidx}', podium_spec = list())
+            for tidx in range(2)
+        ]
+        self.participation_id_to_user_name = dict()
+        for tournament, usernames in zip(tournaments, [self.usernames1, self.usernames2]):
+            for uidx, username in enumerate(usernames):
+                user = OldUser.objects.get_or_create(username = username, defaults = dict(password = 'password'))[0]
+                participation = OldParticipation.objects.create(tournament = tournament, user = user, slot_id = uidx)
+                self.participation_id_to_user_name[participation.id] = username
+
+    def test_migration(self):
+        NewParticipation = self.new_state.apps.get_model('tournaments', 'Participation')
+
+        for participation_id, username in self.participation_id_to_user_name.items():
+            participation = NewParticipation.objects.get(id = participation_id)
+            self.assertEqual(participation.participant.name, username)
+            self.assertEqual(participation.participant.user.username, username)

@@ -1,26 +1,27 @@
 import math
-import re
 import random
+import re
 
+import numpy as np
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
-from django.db.models import CheckConstraint, Q, QuerySet, Min, Max
+from django.db.models import CheckConstraint, Max, Min, Q, QuerySet
 from django.db.models.signals import pre_delete
 from django.dispatch import receiver
-
 from polymorphic.models import PolymorphicModel
-
-import numpy as np
 
 
 class Tournament(models.Model):
 
     name = models.CharField(blank = False, max_length = 100)
-    definition = models.TextField(null = True, blank = True)
+    definition = models.TextField(null = True, blank = True)  # noqa: DJ001
     podium_spec = models.JSONField()
     published = models.BooleanField(default = False)
     creator = models.ForeignKey('auth.User', on_delete = models.SET_NULL, related_name = 'tournaments', null = True, blank = True)
+
+    def __str__(self):
+        return self.name
 
     @staticmethod
     def load(definition, name, **kwargs):
@@ -47,15 +48,15 @@ class Tournament(models.Model):
             mode_type = stage.pop('mode')
 
             if mode_type == 'groups':
-                mode = Groups.objects.create(**stage)
+                Groups.objects.create(**stage)
 
             elif mode_type == 'knockout':
-                mode = Knockout.objects.create(**stage)
+                Knockout.objects.create(**stage)
 
             elif mode_type == 'division':
                 stage['min_group_size'] = 2
                 stage['max_group_size'] = 32767 ## https://docs.djangoproject.com/en/5.0/ref/models/fields/#positivesmallintegerfield
-                mode = Groups.objects.create(**stage)
+                Groups.objects.create(**stage)
 
             else:
                 raise ValidationError(f'Unknown mode: "{mode_type}".')
@@ -64,7 +65,18 @@ class Tournament(models.Model):
 
     @property
     def participants(self):
-        return User.objects.filter(participations__tournament = self).order_by('participations__slot_id')
+        return Participant.objects.filter(participations__tournament = self).order_by('participations__slot_id')
+
+    @property
+    def participating_users(self):
+        return User.objects.filter(participant__participations__tournament = self).order_by('participant__participations__slot_id')
+    
+    def get_participant(self, *, user = None, name = None):
+        assert (user is None) != (name is None)
+        if user is not None:
+            return self.participants.get(user = user)
+        else:
+            return self.participants.get(name = name)
 
     @property
     def current_stage(self):
@@ -76,7 +88,8 @@ class Tournament(models.Model):
     @transaction.atomic
     def shuffle_participants(self):
         count = self.participations.count()
-        if count == 0: return ## early out, so that min/max operations below are well defined
+        if count == 0:
+            return ## early out, so that min/max operations below are well defined
         new_slot_ids = list(range(count))
         random.shuffle(new_slot_ids)
 
@@ -102,7 +115,7 @@ class Tournament(models.Model):
             # If the tournament is finished, update the podium positions.
             podium = self._get_podium()
             for position, participant in enumerate(podium):
-                participation = self.participations.get(user = participant)
+                participation = self.participations.get(participant = participant)
                 participation.podium_position = position
                 participation.save()
 
@@ -125,7 +138,7 @@ class Tournament(models.Model):
 
     @property
     def podium(self):
-        return User.objects.filter(participations__tournament = self, participations__podium_position__isnull = False).order_by('participations__podium_position')
+        return Participant.objects.filter(participations__tournament = self, participations__podium_position__isnull = False).order_by('participations__podium_position')
 
     def _get_podium(self):
         podium = list()
@@ -133,8 +146,8 @@ class Tournament(models.Model):
 
             try:
                 podium_chunk = unwrap_list(self.stages.get(identifier = identifier).placements[position])
-            except IndexError:
-                raise ValueError(f'insufficient participants: {identifier}[{position}] is out of range')
+            except IndexError as error:
+                raise ValueError(f'insufficient participants: {identifier}[{position}] is out of range') from error
 
             if isinstance(podium_chunk, list):
                 podium += podium_chunk
@@ -145,25 +158,26 @@ class Tournament(models.Model):
     def clean(self):
         super(Tournament, self).clean()
         try:
-            for identifier, position in parse_participants_str_list(self.podium_spec):
+            for identifier, _ in parse_participants_str_list(self.podium_spec):
                 try:
                     self.stages.get(identifier = identifier)
-                except Mode.DoesNotExist:
-                    raise ValueError(f'stage "{identifier}" does not exist')
+                except Mode.DoesNotExist as error:
+                    raise ValueError(f'stage "{identifier}" does not exist') from error
         except Exception as error:
-            raise ValidationError(f'Error parsing "podium" definition ({error}).')
+            raise ValidationError(f'Error parsing "podium" definition ({error}).') from error
 
     @transaction.atomic
     def test(self):
         tournament = Tournament.load(definition = self.definition, name = 'Test')
-        for participant in (User.objects.create(username = f'testuser-{pidx}', password = 'password') for pidx in range(len(self.participants))):
-            Participation.objects.create(user = participant, tournament = tournament, slot_id = Participation.next_slot_id(tournament))
+        for participating_name in (f'--testuser-{pidx}' for pidx in range(len(self.participants))):
+            participant = Participant.objects.get_or_create(name = participating_name)[0]
+            Participation.objects.create(participant = participant, tournament = tournament, slot_id = Participation.next_slot_id(tournament))
 
         # Initialize the tournament.
         try:
             tournament.update_state()
         except Exception as error:
-            raise ValidationError(f'Error while initializing tournament ({error}).')
+            raise ValidationError(f'Error while initializing tournament ({error}).') from error
 
         # Play through the tournament, always make the participant with the higher ID win.
         while tournament.current_stage is not None:
@@ -174,8 +188,21 @@ class Tournament(models.Model):
                 # Play the current level, then update the tournament state.
                 for fixture in tournament.current_stage.current_fixtures:
 
-                    for participant in tournament.participants[:fixture.required_confirmations_count]:
-                        fixture.confirmations.add(participant)
+                    # If there are only virtual participants...
+                    if tournament.participating_users.count() == 0:
+                        
+                        # ...and the tournament has a creator, then the creator will confirm the fixture.
+                        if self.creator is not None:
+                            fixture.confirmations.add(self.creator)
+                        
+                        # ...and the tournament has no creator, then the fixture will be confirmed by an arbitrary user.
+                        else:
+                            fixture.confirmations.add(User.objects.first())
+
+                    # Otherwise, the participating users will confirm the fixture.
+                    else:
+                        for user in tournament.participating_users[:fixture.required_confirmations_count]:
+                            fixture.confirmations.add(user)
 
                     fixture.score = (fixture.player1.id, fixture.player2.id)
                     fixture.save()
@@ -184,14 +211,11 @@ class Tournament(models.Model):
 
             except Exception as error:
                 if tournament.current_stage is None:
-                    raise ValidationError(f'Error while validating podium ({error}).')
+                    raise ValidationError(f'Error while validating podium ({error}).') from error
                 else:
-                    raise ValidationError(f'Error while validating "{tournament.current_stage.identifier}" stage ({error}).')
+                    raise ValidationError(f'Error while validating "{tournament.current_stage.identifier}" stage ({error}).') from error
 
         transaction.set_rollback(True)
-
-    def __str__(self):
-        return self.name
 
 
 @receiver(pre_delete, sender=Tournament)
@@ -199,24 +223,49 @@ def delete_tournament_stages(sender, instance, **kwargs):
     instance.stages.non_polymorphic().all().delete()
 
 
+class Participant(models.Model):
+    user = models.ForeignKey('auth.User', on_delete = models.SET_NULL, related_name = 'participant', null = True, blank = True)
+    name = models.CharField(max_length = 100, unique = True)
+
+    def __str__(self):
+        return self.name
+    
+    def __repr__(self):
+        return f'<Participant: {self.name} ({self.id})>'
+
+    @staticmethod
+    def create_for_user(user):
+        return Participant.objects.create(user = user, name = user.username)
+    
+    @staticmethod
+    def get_or_create_for_user(user):
+        try:
+            return Participant.objects.get(user = user)
+        except Participant.DoesNotExist:
+            return Participant.create_for_user(user)
+
+
 class Participation(models.Model):
 
-    user = models.ForeignKey('auth.User', on_delete = models.PROTECT, related_name = 'participations')
+    participant = models.ForeignKey('Participant', on_delete = models.CASCADE, related_name = 'participations')
     tournament = models.ForeignKey('Tournament', on_delete = models.CASCADE, related_name = 'participations')
     slot_id = models.PositiveIntegerField()
     podium_position = models.PositiveIntegerField(null = True, blank = True)
-
-    @staticmethod
-    def next_slot_id(tournament):
-        return Participation.objects.filter(tournament = tournament).aggregate(Max('slot_id', default = -1))['slot_id__max'] + 1
 
     class Meta:
         ordering = ('tournament', 'slot_id')
         unique_together = [
             ('tournament', 'slot_id'),
-            ('tournament', 'user'),
+            ('tournament', 'participant'),
             ('tournament', 'podium_position'),
         ]
+
+    def __str__(self):
+        return f'{self.participant} in {self.tournament}'
+
+    @staticmethod
+    def next_slot_id(tournament):
+        return Participation.objects.filter(tournament = tournament).aggregate(Max('slot_id', default = -1))['slot_id__max'] + 1
 
 
 def parse_participants_str_list(participants_str_list):
@@ -230,7 +279,7 @@ def parse_participants_str_list(participants_str_list):
 
     # Verify that the list of participants is disjoint.
     if len(references) > len(frozenset(references)):
-        raise ValueError(f'list of participants is not disjoint')
+        raise ValueError('list of participants is not disjoint')
 
     return references
 
@@ -243,11 +292,12 @@ def parse_placements_str(placement_str):
         parts = slice_str.split(':')
         parts = [int(part) if len(part) > 0 else None for part in parts]
         assert 1 <= len(parts) <= 3, slice_str
-        if len(parts) == 1: parts = parts + [parts[0] + 1]
+        if len(parts) == 1:
+            parts = parts + [parts[0] + 1]
         placements_slice = slice(*parts)
         return identifier, placements_slice
     except Exception as error:
-        raise ValueError(f'cannot parse placement: "{placement_str}"')
+        raise ValueError(f'cannot parse placement: "{placement_str}"') from error
 
 
 def unwrap_list(items):
@@ -267,13 +317,13 @@ class Mode(PolymorphicModel):
     def clean(self):
         super(Mode, self).clean()
         try:
-            for identifier, position in parse_participants_str_list(self.played_by):
+            for identifier, _ in parse_participants_str_list(self.played_by):
                 try:
                     self.tournament.stages.get(identifier = identifier)
-                except Mode.DoesNotExist:
-                    raise ValueError(f'stage "{identifier}" does not exist')
+                except Mode.DoesNotExist as error:
+                    raise ValueError(f'stage "{identifier}" does not exist') from error
         except Exception as error:
-            raise ValidationError(f'Error parsing "played_by" definition of "{self.identifier}" stage ({error}).')
+            raise ValidationError(f'Error parsing "played_by" definition of "{self.identifier}" stage ({error}).') from error
 
     def create_fixtures(self, participants):
         raise NotImplementedError()
@@ -299,8 +349,8 @@ class Mode(PolymorphicModel):
 
             try:
                 participants_chunk = unwrap_list(self.tournament.stages.get(identifier = identifier).placements[position])
-            except IndexError:
-                raise ValueError(f'insufficient participants: {identifier}[{position}] is out of range')
+            except IndexError as error:
+                raise ValueError(f'insufficient participants: {identifier}[{position}] is out of range') from error
 
             if isinstance(participants_chunk, list):
                 participants += participants_chunk
@@ -406,12 +456,16 @@ def create_division_schedule(participants, with_returns = False):
             return schedule
 
 
-def get_stats(participant, filters = dict()):
+def get_stats(participant, filters = None):
+    if filters is None:
+        filters = dict()
+
     row = dict(participant = participant, win_count = 0, loss_count = 0, draw_count = 0, matches = 0, balance = 0)
     for fixture in participant.fixtures1.filter(**filters) | participant.fixtures2.filter(**filters):
 
         # Only account for confirmed scores.
-        if not fixture.is_confirmed: continue
+        if not fixture.is_confirmed:
+            continue
         scores = (fixture.score1, fixture.score2)
         row['matches'] += 1
 
@@ -453,9 +507,11 @@ class Groups(Mode):
 
             # Schedule fixtures for each group.
             for group in groups:
-                for position, (pidx1, pidx2) in enumerate(pairings):
+                for pidx1, pidx2 in pairings:
 
-                    if pidx1 >= len(group) or pidx2 >= len(group): continue
+                    if pidx1 >= len(group) or pidx2 >= len(group): 
+                        continue
+
                     Fixture.objects.create(
                         mode     = self,
                         level    = level,
@@ -514,7 +570,8 @@ class Knockout(Mode):
         If the number of participants is not a power of 2, playoff matches are required (incomplete levels of the binary tree).
         The order of participants will account for that if `account_for_playoffs` is True, ensuring that the playoffs will be filled up with the very last participants (lowest ranked).
         """
-        if len(participants) == 0: return list()
+        if len(participants) == 0:
+            return list()
 
         # Check whether the number of participants is a power of 2.
         power_of_two, power_of_two_floor = is_power_of_two(len(participants), ret_floor = True)
@@ -811,8 +868,8 @@ class Fixture(models.Model):
     mode    = models.ForeignKey('Mode', on_delete = models.CASCADE, related_name = 'fixtures')
     level   = models.PositiveSmallIntegerField()
     extras  = models.JSONField(default = list, blank = True)
-    player1 = models.ForeignKey('auth.User', on_delete = models.PROTECT, related_name = 'fixtures1', null = True)
-    player2 = models.ForeignKey('auth.User', on_delete = models.PROTECT, related_name = 'fixtures2', null = True)
+    player1 = models.ForeignKey('Participant', on_delete = models.PROTECT, related_name = 'fixtures1', null = True)
+    player2 = models.ForeignKey('Participant', on_delete = models.PROTECT, related_name = 'fixtures2', null = True)
     score1  = models.PositiveSmallIntegerField(null = True)
     score2  = models.PositiveSmallIntegerField(null = True)
     confirmations = models.ManyToManyField('auth.User', related_name = 'fixture_confirmations')
@@ -823,6 +880,21 @@ class Fixture(models.Model):
                 check = (Q(score1__isnull = True) & Q(score2__isnull = True)) | (Q(score1__isnull = False) & Q(score2__isnull = False)),
                 name = 'score1 and score2 must be both null or neither')
         ]
+
+    def __repr__(self):
+        data = ', '.join([
+            f'mode={self.mode}',
+            f'level={self.level}',
+            f'player1={repr(self.player1)}',
+            f'player2={repr(self.player2)}',
+            f'score1={self.score1}',
+            f'score2={self.score2}',
+            f'confirmations={self.confirmations.count()} / {self.required_confirmations_count}',
+        ])
+        return f'<{data}>'
+    
+    def __str__(self):
+        return f'{self.player1} vs. {self.player2}'
 
     def clean(self):
         super(Fixture, self).clean()
@@ -850,7 +922,7 @@ class Fixture(models.Model):
 
     @property
     def required_confirmations_count(self):
-        return 1 + self.mode.tournament.participations.count() // 2
+        return 1 + self.mode.tournament.participations.filter(participant__user__isnull = False).count() // 2
 
     @property
     def is_confirmed(self):
@@ -877,16 +949,3 @@ class Fixture(models.Model):
         if self.score1 > self.score2:
             return self.player2
         return None
-
-    def __repr__(self):
-        prepr = lambda p: None if p is None else f'{p.username} ({p.id})'
-        data = ', '.join([
-            f'mode={self.mode}',
-            f'level={self.level}',
-            f'player1={prepr(self.player1)}',
-            f'player2={prepr(self.player2)}',
-            f'score1={self.score1}',
-            f'score2={self.score2}',
-            f'confirmations={self.confirmations.count()} / {self.required_confirmations_count}',
-        ])
-        return f'<{data}>'

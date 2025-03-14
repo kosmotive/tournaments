@@ -42,36 +42,19 @@ Change into the `tournaments` directory:
 cd tournaments
 ```
 
-#### Reset the database
+#### Initialize/update the database
 
-> [!CAUTION]  
-> This is only required when migrations cannot be performed.
+This is only required after the initial setup, or when updating to new versions:
 
-Reset database migrations:
-```bash
-rm db.sqlite3
-rm -rf */migrations
-```
+1. Create/update the database:
+    ```bash
+    python manage.py migrate
+    ```
 
-#### Initialize the database
-
-> [!TIP]  
-> This is only required after initial setup, after resetting the database, or when updating to new versions.
-
-Create migrations:
-```bash
-python manage.py makemigrations tournaments
-```
-
-Create/update database:
-```bash
-python manage.py migrate
-```
-
-Create a superuser:
-```bash
-python manage.py createsuperuser
-```
+2. Create a superuser: (only after the initial setup)
+    ```bash
+    python manage.py createsuperuser
+    ```
 
 #### Day-to-day use
 

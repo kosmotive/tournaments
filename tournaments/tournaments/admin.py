@@ -1,14 +1,21 @@
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 
 from . import models
 
 
+@admin.register(models.Participant)
+class ParticipantAdmin(admin.ModelAdmin):
+
+    list_display = ('name', 'user')
+
+    ordering = ('name',)
+
+
 class ParticipationInline(admin.TabularInline):
     model = models.Participation
-    fields = ('user', 'slot_id', 'podium_position')
+    fields = ('participant', 'slot_id', 'podium_position')
 
 @admin.action(description='Reset active/finished tournament to open')
 def reset_tournament(modeladmin, request, queryset):
@@ -46,6 +53,11 @@ class TournamentAdmin(admin.ModelAdmin):
     inlines = [
         ParticipationInline,
     ]
+
+    def state(self, obj):
+        return obj.state
+
+    ordering = ('name',)
 
 
 @admin.register(models.Fixture)

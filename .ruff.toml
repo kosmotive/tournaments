@@ -1,0 +1,17 @@
+exclude = [
+    "tournaments/tournaments/migrations/*",
+]
+
+line-length = 120
+indent-width = 4
+target-version = "py39"
+
+[lint]
+select = ["E4", "E7", "E9", "F", "I", "ERA001", "B", "DJ"]
+
+[lint.per-file-ignores]
+"tournaments/tournaments/settings/*" = ["F405", "F403"]
+
+[format]
+quote-style = "single"
+indent-style = "space"

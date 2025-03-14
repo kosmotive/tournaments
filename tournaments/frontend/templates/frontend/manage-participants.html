@@ -1,0 +1,27 @@
+{% extends "frontend/base.html" %}
+
+{% load capture_tags %}
+
+{% block title %}Manage Attendees{% endblock %}
+
+{% block header %}
+<h1>Manage Attendees</h1>
+{% endblock %}
+
+{% block content %}
+<form method="post" action="{% url 'manage-participants' pk=tournament.id %}" class="mb-5">
+    {% csrf_token %}
+    <div class="form-group">
+        <label for="participant_names">Attendee Names (one per line)</label>
+        <textarea class="form-control" id="participant_names" name="participant_names" rows="10" required>{% for participant in tournament.participants %}{{ participant.name }}
+{% endfor %}</textarea>
+    </div>
+    <button type="submit" class="btn btn-primary"><i class="bi bi-floppy-fill"></i> Save Attendees</button>
+</form>
+
+{% capture silent %}
+<a class="btn btn-secondary" href="{% url 'update-tournament' pk=tournament.id %}" role="button">Manage Tournament</a>
+{% endcapture %}
+
+{% include "frontend/tournament-details.html" with tournament=tournament buttons=capture %}
+{% endblock %}

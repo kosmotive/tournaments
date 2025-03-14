@@ -5,7 +5,6 @@ from django.utils.safestring import mark_safe
 
 from tournaments.models import parse_participants_str_list
 
-
 register = template.Library()
 
 
@@ -44,7 +43,7 @@ def parse_participants(participants_str_list, tournament):
 
 @register.filter
 def is_joined_by(tournament, user):
-    return user.id is not None and tournament.participations.filter(user = user).count() > 0
+    return user.id is not None and tournament.participations.filter(participant__user = user).count() > 0
 
 
 @register.filter

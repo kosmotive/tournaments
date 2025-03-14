@@ -1,13 +1,13 @@
 import re
 
-from django.contrib.auth.views import LoginView, LogoutView
-from django.urls import reverse
+from django.contrib.auth.views import LoginView
 from django.test import TestCase
+from django.urls import reverse
+
+from tournaments import models
+from tournaments.tests import _confirm_fixture, test_tournament1_yml
 
 from . import views
-from tournaments import models
-from tournaments.tests import test_tournament1_yml, _confirm_fixture
-
 
 password1 = 'Xz23#!sZ'
 
@@ -44,14 +44,14 @@ class IndexViewTests(TestCase):
         self.assertNotContains(response, 'Finished')
 
     def test_authenticated_draft_of_other_user(self):
-        tournament = models.Tournament.load(definition = test_tournament1_yml, name = 'Test')
+        models.Tournament.load(definition = test_tournament1_yml, name = 'Test')
         self.test_authenticated_empty()
 
     def test_authenticated_draft(self):
         user = models.User.objects.create(username = 'test1')
         self.client.force_login(user)
 
-        tournament = models.Tournament.load(definition = test_tournament1_yml, name = 'Test', creator = user)
+        models.Tournament.load(definition = test_tournament1_yml, name = 'Test', creator = user)
 
         response = self.client.get(reverse('index'))
         self.assertEqual(response.status_code, 200)
@@ -323,18 +323,28 @@ class PublishTournamentViewTests(TestCase):
         self.assertTrue(self.user1_tournament.published)
 
 
-def add_participators(tournament, number = 10):
+def add_participants(tournament, num_users = 10, names = None):
+    if names is None:
+        names = list()
+
     if not tournament.published:
         tournament.published = True
         tournament.save()
-    users = [models.User.objects.get_or_create(username = f'user{idx}')[0] for idx in range(number)]
+
+    users = [models.User.objects.get_or_create(username = f'user{idx}')[0] for idx in range(num_users)]
     for user in users:
-        models.Participation.objects.create(tournament = tournament, user = user, slot_id = models.Participation.next_slot_id(tournament))
+        participant = models.Participant.get_or_create_for_user(user)
+        models.Participation.objects.create(tournament = tournament, participant = participant, slot_id = models.Participation.next_slot_id(tournament))
+
+    for name in names:
+        participant = models.Participant.objects.get_or_create(name = name)[0]
+        models.Participation.objects.create(tournament = tournament, participant = participant, slot_id = models.Participation.next_slot_id(tournament))
+        
     return users
 
 
 def start_tournament(tournament, **kwargs):
-    users = add_participators(tournament, **kwargs)
+    users = add_participants(tournament, **kwargs)
     tournament.update_state()
     assert tournament.state == 'active'
     return users
@@ -464,7 +474,7 @@ class JoinTournamentViewTests(TestCase):
         response = self.client.get(reverse('join-tournament', kwargs = dict(pk = self.user2_tournament.id)), follow = True)
         self.assertEqual(response.status_code, 200)
         self.assertIs(response.resolver_match.func.view_class, views.UpdateTournamentView)
-        self.assertTrue(self.user1 in self.user2_tournament.participants)
+        self.assertTrue(self.user1 in self.user2_tournament.participating_users)
 
     def test_drafted(self):
         self.user1_tournament.published = False
@@ -485,7 +495,7 @@ class JoinTournamentViewTests(TestCase):
         response = self.client.get(reverse('join-tournament', kwargs = dict(pk = self.user1_tournament.id)), follow = True)
         self.assertEqual(response.status_code, 200)
         self.assertIs(response.resolver_match.func.view_class, views.UpdateTournamentView)
-        self.assertTrue(self.user1 in self.user1_tournament.participants)
+        self.assertTrue(self.user1 in self.user1_tournament.participating_users)
 
 
 class WithdrawTournamentViewTests(TestCase):
@@ -500,7 +510,7 @@ class WithdrawTournamentViewTests(TestCase):
 
         for tournament in models.Participation.objects.all():
             for user in models.User.objects.all():
-                models.Participation.objects.create(tournament = tournament, user = user, slot_id = models.Participation.next_slot_id(tournament))
+                models.Participation.objects.create(tournament = tournament, participant = models.Participant.create_for_user(user), slot_id = models.Participation.next_slot_id(tournament))
 
     def test_unauthenticated(self):
         self.client.logout()
@@ -607,7 +617,7 @@ class TournamentProgressViewTests(TestCase):
         self.tournament1 = models.Tournament.load(definition = test_tournament1_yml, name = 'Test1', creator = self.user1, published = True)
         self.tournament2 = models.Tournament.load(definition = test_tournament1_yml, name = 'Test2', creator = self.user2, published = True)
 
-        self.users = add_participators(self.tournament1, number = 10)
+        self.users = add_participants(self.tournament1, num_users = 10)
 
     def test_unauthenticated_open(self):
         """
@@ -648,7 +658,7 @@ class TournamentProgressViewTests(TestCase):
         Starting a tournament created by the user yields 412 (precondition failed) if there are fewer than 3 participators.
         """
         self.client.force_login(self.user2)
-        add_participators(self.tournament2, number = 2)
+        add_participants(self.tournament2, num_users = 2)
         response = self.client.get(reverse('tournament-progress', kwargs = dict(pk = self.tournament2.id)))
         self.assertEqual(response.status_code, 412)
 
@@ -657,7 +667,7 @@ class TournamentProgressViewTests(TestCase):
         Starting a tournament created by the user fails if `Tournament.test` checking fails.
         """
         self.client.force_login(self.user2)
-        add_participators(self.tournament2, number = 4)
+        add_participants(self.tournament2, num_users = 4)
         response = self.client.get(reverse('tournament-progress', kwargs = dict(pk = self.tournament2.id)), follow = True)
         self.assertEqual(response.status_code, 200)
         self.assertIs(response.resolver_match.func.view_class, views.UpdateTournamentView)
@@ -668,7 +678,7 @@ class TournamentProgressViewTests(TestCase):
         Starting a tournament created by the user fails if `Tournament.test` checking fails.
         """
         self.client.force_login(self.user2)
-        add_participators(self.tournament2, number = 5)
+        add_participants(self.tournament2, num_users = 5)
         response = self.client.get(reverse('tournament-progress', kwargs = dict(pk = self.tournament2.id)), follow = True)
         self.assertEqual(response.status_code, 200)
         self.assertIs(response.resolver_match.func.view_class, views.UpdateTournamentView)
@@ -682,6 +692,14 @@ class TournamentProgressViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(self.tournament1.state, 'active')
         self.assertContains(response, '<h2>Preliminaries <small class="text-muted">Current Stage</small></h2>')
+
+    def test_open_without_creator(self):
+        """
+        Successfully starts an open tournament that has no creator (e.g., the `User` was deleted).
+        """
+        self.tournament1.creator = None
+        self.tournament1.save()
+        self.test_open()
 
     def test_post_open(self):
         fixture = models.Fixture.objects.create(mode = self.tournament1.stages.all()[0], level = 0)
@@ -741,7 +759,7 @@ class TournamentProgressViewTests(TestCase):
         self.test_open() ## start the tournament
         self.client.force_login(self.users[0])
         fixture = self.tournament1.current_stage.fixtures.filter(level = self.tournament1.current_stage.current_level)[0]
-        _confirm_fixture(self.tournament1.participants, fixture)
+        _confirm_fixture(self.tournament1.participating_users, fixture)
         response = self.client.post(
             reverse('tournament-progress', kwargs = dict(pk = self.tournament1.id)),
             dict(
@@ -790,3 +808,79 @@ class TournamentProgressViewTests(TestCase):
         self.assertContains(response, 'Your confirmation has been saved.')
         self.assertContains(response, 'Confirmations: 1 / 6')
         self.assertContains(response, 'You have confirmed.')
+
+
+class ManageParticipantsViewTests(TestCase):
+
+    def setUp(self):
+        self.user1 = models.User.objects.create(username = 'test1')
+        self.user2 = models.User.objects.create(username = 'test2')
+        self.client.force_login(self.user1)
+
+        self.tournament1 = models.Tournament.load(definition = test_tournament1_yml, name = 'Test1', creator = self.user1, published = True)
+        self.tournament2 = models.Tournament.load(definition = test_tournament1_yml, name = 'Test2', creator = self.user1, published = True)
+
+        self.assertTrue(self.tournament1.state == 'open')
+        self.assertTrue(self.tournament2.state == 'open')
+
+    def test_open_get(self):
+        add_participants(self.tournament1, num_users = 3, names = ['Participant1'])
+        response = self.client.get(reverse('manage-participants', kwargs = dict(pk = self.tournament1.id)))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Manage Attendees')
+        self.assertContains(response, 'Attendee Names (one per line)')
+        self.assertContains(response, 'Save Attendees')
+        self.assertContains(response, '\n'.join(f'user{i}' for i in range(3)) + '\n' + 'Participant1')
+
+    def test_open_post(self):
+        add_participants(self.tournament1, num_users = 3, names = ['Participant1', 'Participant2', 'Participant3'])
+        add_participants(self.tournament2, names = ['Participant3'])
+
+        # Submit updated list of participant names.
+        participant_names_expected = ['user1', 'Participant1', 'Participant4', 'user2']
+        participant_names_text = '\n'.join(participant_names_expected)
+        response = self.client.post(reverse('manage-participants', kwargs = dict(pk = self.tournament1.id)),
+                                    dict(participant_names = participant_names_text), follow = True)
+        
+        # Check that the submission was successful.
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Attendees have been updated.')
+
+        # Check that `Participant1` and `Participant3` still exist, and `Participant4` has been created.
+        for i in [1, 3, 4]:
+            self.assertTrue(models.Participant.objects.filter(name = f'Participant{i}').exists(), f'Participant{i} does not exist.')
+
+        # Check that `Participant2` has been deleted.
+        self.assertFalse(models.Participant.objects.filter(name = 'Participant2').exists())
+
+        # Check that the right, and only the right participants are participating.
+        participant_names_actual = [participation.participant.name for participation in self.tournament1.participations.all()]
+        self.assertEqual(participant_names_actual, participant_names_expected)
+
+    def test_open_unauthenticated(self):
+        self.client.logout()
+
+        response = self.client.get(reverse('manage-participants', kwargs = dict(pk = self.tournament1.id)), follow = True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.resolver_match.func.view_class, LoginView)
+
+    def test_not_found(self):
+        response = self.client.get(reverse('manage-participants', kwargs = dict(pk = 0)))
+        self.assertEqual(response.status_code, 404)
+
+    def test_foreign(self):
+        self.client.force_login(self.user2)
+        response = self.client.get(reverse('manage-participants', kwargs = dict(pk = self.tournament1.id)))
+        self.assertEqual(response.status_code, 403)
+
+    def test_drafted(self):
+        self.tournament1.published = False
+        self.tournament1.save()
+        response = self.client.get(reverse('manage-participants', kwargs = dict(pk = self.tournament1.id)))
+        self.assertEqual(response.status_code, 412)
+
+    def test_active(self):
+        start_tournament(self.tournament1)
+        self.assertEqual(self.tournament1.state, 'active')
+        response = self.client.get(reverse('manage-participants', kwargs = dict(pk = self.tournament1.id)))
+        self.assertEqual(response.status_code, 412)

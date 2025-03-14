@@ -19,7 +19,14 @@
             <span class="text-muted"><strong>Attendees:</strong></span>
             {% for participant in tournament.participants %}
     
-                <span class="d-inline-block"><i class="bi bi-person"></i> {{ participant }}</span>
+                <span class="d-inline-block">
+                    {% if participant.user %}
+                        <i class="bi bi-person-fill"></i>
+                    {% else %}
+                        <i class="bi bi-person"></i>
+                    {% endif %}
+                    {{ participant.name }}
+                </span>
     
             {% endfor %}
             </small></p>
@@ -48,7 +55,14 @@
             <span class="text-muted"><strong>Podium:</strong></span>
             {% for participant in tournament.podium %}
     
-                <span class="d-inline-block podium-{{ forloop.counter }}"><i class="bi bi-person"></i> {{ participant }}</span>
+                <span class="d-inline-block podium-{{ forloop.counter }}">
+                    {% if participant.user %}
+                        <i class="bi bi-person-fill"></i>
+                    {% else %}
+                        <i class="bi bi-person"></i>
+                    {% endif %}
+                    {{ participant.name }}
+                </span>
     
             {% endfor %}
             </small></p>
@@ -160,8 +174,18 @@
                 {% endif %}
     
                 {% if tournament.creator == user %}
-    
-                    <a class="btn btn-secondary {{ button_classes }}" href="javascript:confirmGoTo('All current attendees will be removed when the tournament is reset to draft mode.', '{% url 'draft-tournament' pk=tournament.id %}');" role="button"><i class="bi bi-eye-fill"></i> Published</a>
+
+                    <div class="btn-group dropup">
+                        <button class="btn btn-secondary dropdown-toggle {{ button_classes }}" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="bi bi-pencil-fill"></i> Manage
+                        </button>
+                        <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+
+                            <a class="dropdown-item" href="javascript:confirmGoTo('All current attendees will be removed when the tournament is reset to draft mode.', '{% url 'draft-tournament' pk=tournament.id %}');">Revert to draft</a>
+                            <a class="dropdown-item" href="{% url 'manage-participants' pk=tournament.id %}">Manage attendees</a>
+
+                        </div>
+                    </div>
     
                     {% if tournament.participations.count >= 3 %}
     
