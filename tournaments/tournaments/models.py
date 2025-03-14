@@ -15,10 +15,13 @@ from polymorphic.models import PolymorphicModel
 class Tournament(models.Model):
 
     name = models.CharField(blank = False, max_length = 100)
-    definition = models.TextField(null = True, blank = True)
+    definition = models.TextField(null = True, blank = True)  # noqa: DJ001
     podium_spec = models.JSONField()
     published = models.BooleanField(default = False)
     creator = models.ForeignKey('auth.User', on_delete = models.SET_NULL, related_name = 'tournaments', null = True, blank = True)
+
+    def __str__(self):
+        return self.name
 
     @staticmethod
     def load(definition, name, **kwargs):
@@ -143,8 +146,8 @@ class Tournament(models.Model):
 
             try:
                 podium_chunk = unwrap_list(self.stages.get(identifier = identifier).placements[position])
-            except IndexError:
-                raise ValueError(f'insufficient participants: {identifier}[{position}] is out of range')
+            except IndexError as error:
+                raise ValueError(f'insufficient participants: {identifier}[{position}] is out of range') from error
 
             if isinstance(podium_chunk, list):
                 podium += podium_chunk
@@ -155,13 +158,13 @@ class Tournament(models.Model):
     def clean(self):
         super(Tournament, self).clean()
         try:
-            for identifier, position in parse_participants_str_list(self.podium_spec):
+            for identifier, _ in parse_participants_str_list(self.podium_spec):
                 try:
                     self.stages.get(identifier = identifier)
-                except Mode.DoesNotExist:
-                    raise ValueError(f'stage "{identifier}" does not exist')
+                except Mode.DoesNotExist as error:
+                    raise ValueError(f'stage "{identifier}" does not exist') from error
         except Exception as error:
-            raise ValidationError(f'Error parsing "podium" definition ({error}).')
+            raise ValidationError(f'Error parsing "podium" definition ({error}).') from error
 
     @transaction.atomic
     def test(self):
@@ -174,7 +177,7 @@ class Tournament(models.Model):
         try:
             tournament.update_state()
         except Exception as error:
-            raise ValidationError(f'Error while initializing tournament ({error}).')
+            raise ValidationError(f'Error while initializing tournament ({error}).') from error
 
         # Play through the tournament, always make the participant with the higher ID win.
         while tournament.current_stage is not None:
@@ -208,14 +211,11 @@ class Tournament(models.Model):
 
             except Exception as error:
                 if tournament.current_stage is None:
-                    raise ValidationError(f'Error while validating podium ({error}).')
+                    raise ValidationError(f'Error while validating podium ({error}).') from error
                 else:
-                    raise ValidationError(f'Error while validating "{tournament.current_stage.identifier}" stage ({error}).')
+                    raise ValidationError(f'Error while validating "{tournament.current_stage.identifier}" stage ({error}).') from error
 
         transaction.set_rollback(True)
-
-    def __str__(self):
-        return self.name
 
 
 @receiver(pre_delete, sender=Tournament)
@@ -227,6 +227,12 @@ class Participant(models.Model):
     user = models.ForeignKey('auth.User', on_delete = models.SET_NULL, related_name = 'participant', null = True, blank = True)
     name = models.CharField(max_length = 100, unique = True)
 
+    def __str__(self):
+        return self.name
+    
+    def __repr__(self):
+        return f'<Participant: {self.name} ({self.id})>'
+
     @staticmethod
     def create_for_user(user):
         return Participant.objects.create(user = user, name = user.username)
@@ -237,12 +243,6 @@ class Participant(models.Model):
             return Participant.objects.get(user = user)
         except Participant.DoesNotExist:
             return Participant.create_for_user(user)
-
-    def __str__(self):
-        return self.name
-    
-    def __repr__(self):
-        return f'<Participant: {self.name} ({self.id})>'
 
 
 class Participation(models.Model):
@@ -259,6 +259,9 @@ class Participation(models.Model):
             ('tournament', 'participant'),
             ('tournament', 'podium_position'),
         ]
+
+    def __str__(self):
+        return f'{self.participant} in {self.tournament}'
 
     @staticmethod
     def next_slot_id(tournament):
@@ -293,8 +296,8 @@ def parse_placements_str(placement_str):
             parts = parts + [parts[0] + 1]
         placements_slice = slice(*parts)
         return identifier, placements_slice
-    except Exception:
-        raise ValueError(f'cannot parse placement: "{placement_str}"')
+    except Exception as error:
+        raise ValueError(f'cannot parse placement: "{placement_str}"') from error
 
 
 def unwrap_list(items):
@@ -314,13 +317,13 @@ class Mode(PolymorphicModel):
     def clean(self):
         super(Mode, self).clean()
         try:
-            for identifier, position in parse_participants_str_list(self.played_by):
+            for identifier, _ in parse_participants_str_list(self.played_by):
                 try:
                     self.tournament.stages.get(identifier = identifier)
-                except Mode.DoesNotExist:
-                    raise ValueError(f'stage "{identifier}" does not exist')
+                except Mode.DoesNotExist as error:
+                    raise ValueError(f'stage "{identifier}" does not exist') from error
         except Exception as error:
-            raise ValidationError(f'Error parsing "played_by" definition of "{self.identifier}" stage ({error}).')
+            raise ValidationError(f'Error parsing "played_by" definition of "{self.identifier}" stage ({error}).') from error
 
     def create_fixtures(self, participants):
         raise NotImplementedError()
@@ -346,8 +349,8 @@ class Mode(PolymorphicModel):
 
             try:
                 participants_chunk = unwrap_list(self.tournament.stages.get(identifier = identifier).placements[position])
-            except IndexError:
-                raise ValueError(f'insufficient participants: {identifier}[{position}] is out of range')
+            except IndexError as error:
+                raise ValueError(f'insufficient participants: {identifier}[{position}] is out of range') from error
 
             if isinstance(participants_chunk, list):
                 participants += participants_chunk
@@ -453,7 +456,10 @@ def create_division_schedule(participants, with_returns = False):
             return schedule
 
 
-def get_stats(participant, filters = dict()):
+def get_stats(participant, filters = None):
+    if filters is None:
+        filters = dict()
+
     row = dict(participant = participant, win_count = 0, loss_count = 0, draw_count = 0, matches = 0, balance = 0)
     for fixture in participant.fixtures1.filter(**filters) | participant.fixtures2.filter(**filters):
 
@@ -501,7 +507,7 @@ class Groups(Mode):
 
             # Schedule fixtures for each group.
             for group in groups:
-                for position, (pidx1, pidx2) in enumerate(pairings):
+                for pidx1, pidx2 in pairings:
 
                     if pidx1 >= len(group) or pidx2 >= len(group): 
                         continue
@@ -875,6 +881,21 @@ class Fixture(models.Model):
                 name = 'score1 and score2 must be both null or neither')
         ]
 
+    def __repr__(self):
+        data = ', '.join([
+            f'mode={self.mode}',
+            f'level={self.level}',
+            f'player1={repr(self.player1)}',
+            f'player2={repr(self.player2)}',
+            f'score1={self.score1}',
+            f'score2={self.score2}',
+            f'confirmations={self.confirmations.count()} / {self.required_confirmations_count}',
+        ])
+        return f'<{data}>'
+    
+    def __str__(self):
+        return f'{self.player1} vs. {self.player2}'
+
     def clean(self):
         super(Fixture, self).clean()
         self.mode.check_fixture(self)
@@ -928,15 +949,3 @@ class Fixture(models.Model):
         if self.score1 > self.score2:
             return self.player2
         return None
-
-    def __repr__(self):
-        data = ', '.join([
-            f'mode={self.mode}',
-            f'level={self.level}',
-            f'player1={repr(self.player1)}',
-            f'player2={repr(self.player2)}',
-            f'score1={self.score1}',
-            f'score2={self.score2}',
-            f'confirmations={self.confirmations.count()} / {self.required_confirmations_count}',
-        ])
-        return f'<{data}>'

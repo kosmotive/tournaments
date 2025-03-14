@@ -31,11 +31,11 @@ class CreateTournamentForm(forms.Form):
             for stage in tournament.stages.all():
                 stage.full_clean()
         except ValidationError as error:
-            raise ValidationError(' '.join((str(err) for err in error.messages)))
+            raise ValidationError(' '.join((str(err) for err in error.messages))) from error
         except KeyError as error:
-            raise ValidationError(f'Missing key: "{error.args[0]}".')
+            raise ValidationError(f'Missing key: "{error.args[0]}".') from error
         except Exception as error:
-            raise ValidationError(error)
+            raise ValidationError(error) from error
         transaction.set_rollback(True)
 
     def clean_definition(self):
@@ -45,8 +45,8 @@ class CreateTournamentForm(forms.Form):
         try:
             definition = yaml.safe_load(definition_str)
             assert isinstance(definition, dict)
-        except:  # noqa: E722
-            raise ValidationError('Definition must be supplied in valid YAML.')
+        except (yaml.YAMLError, AssertionError) as error:
+            raise ValidationError('Definition must be supplied in valid YAML.') from error
 
         # Check for semantic correctness.
         self.validate_definition(definition)

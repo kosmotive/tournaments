@@ -323,17 +323,23 @@ class PublishTournamentViewTests(TestCase):
         self.assertTrue(self.user1_tournament.published)
 
 
-def add_participants(tournament, num_users = 10, names = list()):
+def add_participants(tournament, num_users = 10, names = None):
+    if names is None:
+        names = list()
+
     if not tournament.published:
         tournament.published = True
         tournament.save()
+
     users = [models.User.objects.get_or_create(username = f'user{idx}')[0] for idx in range(num_users)]
     for user in users:
         participant = models.Participant.get_or_create_for_user(user)
         models.Participation.objects.create(tournament = tournament, participant = participant, slot_id = models.Participation.next_slot_id(tournament))
+
     for name in names:
         participant = models.Participant.objects.get_or_create(name = name)[0]
         models.Participation.objects.create(tournament = tournament, participant = participant, slot_id = models.Participation.next_slot_id(tournament))
+        
     return users
 
 

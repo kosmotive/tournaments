@@ -461,7 +461,6 @@ class GroupsTest(ModeTestBase, TestCase):
 
     def test_standings(self):
         mode = self.test_create_fixtures_extended()
-        #self.add_participants(self.tournament, 5)
 
         # Test on level 0 (no scores yet).
         expected_standings = [
@@ -1632,7 +1631,7 @@ class TournamentTest(TestCase):
         _add_participating_users(self.participating_users, tournament)
         permutations = list()
         original_participants = tuple([p.id for p in tournament.participants])
-        for itr in range(repeat + 1):
+        for _ in range(repeat + 1):
             tournament.shuffle_participants()
             actual_participants = tuple([p.id for p in tournament.participants])
             self.assertNotIn(actual_participants, permutations)
