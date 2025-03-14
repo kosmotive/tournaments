@@ -6,6 +6,14 @@ from django.utils.safestring import mark_safe
 from . import models
 
 
+@admin.register(models.Participant)
+class ParticipantAdmin(admin.ModelAdmin):
+
+    list_display = ('name', 'user')
+
+    ordering = ('name',)
+
+
 class ParticipationInline(admin.TabularInline):
     model = models.Participation
     fields = ('participant', 'slot_id', 'podium_position')
@@ -46,6 +54,11 @@ class TournamentAdmin(admin.ModelAdmin):
     inlines = [
         ParticipationInline,
     ]
+
+    def state(self, obj):
+        return obj.state
+
+    ordering = ('name',)
 
 
 @admin.register(models.Fixture)
