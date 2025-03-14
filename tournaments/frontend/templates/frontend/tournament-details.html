@@ -55,7 +55,14 @@
             <span class="text-muted"><strong>Podium:</strong></span>
             {% for participant in tournament.podium %}
     
-                <span class="d-inline-block podium-{{ forloop.counter }}"><i class="bi bi-person"></i> {{ participant }}</span>
+                <span class="d-inline-block podium-{{ forloop.counter }}">
+                    {% if participant.user %}
+                        <i class="bi bi-person-fill"></i>
+                    {% else %}
+                        <i class="bi bi-person"></i>
+                    {% endif %}
+                    {{ participant.name }}
+                </span>
     
             {% endfor %}
             </small></p>

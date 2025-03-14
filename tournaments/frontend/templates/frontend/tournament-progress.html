@@ -70,7 +70,14 @@
                                         <div class="row bg-light rounded-top py-2 mx-0 {% if stage_info.levels|length > 1 %}mt-2{% endif %} {% if not fixture.editable %}rounded-bottom{% endif %}">
 
                                             <div class="col-4 text-left">
-                                                <strong><i class="bi bi-person"></i> {{ fixture.data.player1 }}</strong>
+                                                <strong>
+                                                    {% if fixture.data.player1.user %}
+                                                        <i class="bi bi-person-fill"></i>
+                                                    {% else %}
+                                                        <i class="bi bi-person"></i>
+                                                    {% endif %}
+                                                    {{ fixture.data.player1.name }}
+                                                </strong>
                                             </div>
                                             <div class="col-1 text-center" style="padding: 0;">
                                                 {% if fixture.editable and not fixture.has_confirmed %}
@@ -90,7 +97,14 @@
                                                 {% endif %}
                                             </div>
                                             <div class="col-4 text-right">
-                                                <strong><i class="bi bi-person"></i> {{ fixture.data.player2 }}</strong>
+                                                <strong>
+                                                    {% if fixture.data.player2.user %}
+                                                        <i class="bi bi-person-fill"></i>
+                                                    {% else %}
+                                                        <i class="bi bi-person"></i>
+                                                    {% endif %}
+                                                    {{ fixture.data.player2.name }}
+                                                </strong>
                                             </div>
 
                                         </div>
