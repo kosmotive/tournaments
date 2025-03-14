@@ -46,7 +46,7 @@ cd tournaments
 
 This is only required after the initial setup, or when updating to new versions:
 
-1. Create/update database:
+1. Create/update the database:
     ```bash
     python manage.py migrate
     ```
