@@ -160,10 +160,18 @@
                 {% endif %}
     
                 {% if tournament.creator == user %}
-    
-                    <a class="btn btn-secondary {{ button_classes }}" href="javascript:confirmGoTo('All current attendees will be removed when the tournament is reset to draft mode.', '{% url 'draft-tournament' pk=tournament.id %}');" role="button"><i class="bi bi-eye-fill"></i> Published</a>
-    
-                    <a class="btn btn-secondary {{ button_classes }}" href="{% url 'manage-participants' pk=tournament.id %}" role="button"><i class="bi bi-person-fill-gear"></i> Attendees</a>
+
+                    <div class="btn-group dropup">
+                        <button class="btn btn-secondary dropdown-toggle {{ button_classes }}" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="bi bi-pencil-fill"></i> Manage
+                        </button>
+                        <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+
+                            <a class="dropdown-item" href="javascript:confirmGoTo('All current attendees will be removed when the tournament is reset to draft mode.', '{% url 'draft-tournament' pk=tournament.id %}');">Revert to draft</a>
+                            <a class="dropdown-item" href="{% url 'manage-participants' pk=tournament.id %}">Manage attendees</a>
+
+                        </div>
+                    </div>
     
                     {% if tournament.participations.count >= 3 %}
     
