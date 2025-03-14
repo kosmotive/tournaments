@@ -1,0 +1,13 @@
+name: Linting
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+  run_linters:
+    name: Linters
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/ruff-action@v3
