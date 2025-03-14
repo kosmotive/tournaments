@@ -19,7 +19,14 @@
             <span class="text-muted"><strong>Attendees:</strong></span>
             {% for participant in tournament.participants %}
     
-                <span class="d-inline-block"><i class="bi bi-person"></i> {{ participant }}</span>
+                <span class="d-inline-block">
+                    {% if participant.user %}
+                        <i class="bi bi-person-fill"></i>
+                    {% else %}
+                        <i class="bi bi-person"></i>
+                    {% endif %}
+                    {{ participant.name }}
+                </span>
     
             {% endfor %}
             </small></p>
