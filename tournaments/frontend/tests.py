@@ -806,7 +806,10 @@ class ManageParticipantsViewTests(TestCase):
         self.tournament1 = models.Tournament.load(definition = test_tournament1_yml, name = 'Test1', creator = self.user1, published = True)
         self.tournament2 = models.Tournament.load(definition = test_tournament1_yml, name = 'Test2', creator = self.user1, published = True)
 
-    def test_get(self):
+        self.assertTrue(self.tournament1.state == 'open')
+        self.assertTrue(self.tournament2.state == 'open')
+
+    def test_open_get(self):
         add_participants(self.tournament1, num_users = 3, names = ['Participant1'])
         response = self.client.get(reverse('manage-participants', kwargs = dict(pk = self.tournament1.id)))
         self.assertEqual(response.status_code, 200)
@@ -815,7 +818,7 @@ class ManageParticipantsViewTests(TestCase):
         self.assertContains(response, 'Save Attendees')
         self.assertContains(response, '\n'.join(f'user{i}' for i in range(3)) + '\n' + 'Participant1')
 
-    def test_post(self):
+    def test_open_post(self):
         add_participants(self.tournament1, num_users = 3, names = ['Participant1', 'Participant2', 'Participant3'])
         add_participants(self.tournament2, names = ['Participant3'])
 
@@ -839,3 +842,31 @@ class ManageParticipantsViewTests(TestCase):
         # Check that the right, and only the right participants are participating.
         participant_names_actual = [participation.participant.name for participation in self.tournament1.participations.all()]
         self.assertEqual(participant_names_actual, participant_names_expected)
+
+    def test_open_unauthenticated(self):
+        self.client.logout()
+
+        response = self.client.get(reverse('manage-participants', kwargs = dict(pk = self.tournament1.id)), follow = True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.resolver_match.func.view_class, LoginView)
+
+    def test_not_found(self):
+        response = self.client.get(reverse('manage-participants', kwargs = dict(pk = 0)))
+        self.assertEqual(response.status_code, 404)
+
+    def test_foreign(self):
+        self.client.force_login(self.user2)
+        response = self.client.get(reverse('manage-participants', kwargs = dict(pk = self.tournament1.id)))
+        self.assertEqual(response.status_code, 403)
+
+    def test_drafted(self):
+        self.tournament1.published = False
+        self.tournament1.save()
+        response = self.client.get(reverse('manage-participants', kwargs = dict(pk = self.tournament1.id)))
+        self.assertEqual(response.status_code, 412)
+
+    def test_active(self):
+        start_tournament(self.tournament1)
+        self.assertEqual(self.tournament1.state, 'active')
+        response = self.client.get(reverse('manage-participants', kwargs = dict(pk = self.tournament1.id)))
+        self.assertEqual(response.status_code, 412)

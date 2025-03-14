@@ -260,14 +260,21 @@ class ManageParticipantsView(IsCreatorMixin, SingleObjectMixin, VersionInfoMixin
 
     model = models.Tournament
     template_name = 'frontend/manage-participants.html'
+        
+    def dispatch(self, *args, **kwargs):
+        self.object = self.get_object()
+
+        # Check whether the tournament is in "open" state.
+        if self.get_object().state != 'open':
+            return HttpResponse(status = 412)
+        
+        return super().dispatch(*args, **kwargs)
 
     def get(self, request, *args, **kwargs):
-        self.object = self.get_object()
         context = self.get_context_data(**kwargs)
         return render(request, self.template_name, context)
 
     def post(self, request, *args, **kwargs):
-        self.object = self.get_object()
         participant_names = request.POST.get('participant_names')
         if participant_names:
             participant_names_list = list(filter(lambda s: len(s) > 0, map(lambda s: s.strip(), participant_names.splitlines())))
