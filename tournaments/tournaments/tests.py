@@ -786,6 +786,15 @@ class GroupsTest(ModeTestBase, TestCase):
             (5, 2): 3,
             (6, 2): 4,
             (7, 2): 4,
+
+            # Tests without user participants.
+            (0, 2): 1,
+            (0, 3): 1,
+            (0, 4): 1,
+            (0, 5): 1,
+            (0, 6): 1,
+            (0, 7): 1,
+            (0, 8): 1,
         }
         for (n, m), expected_count in expected_counts.items():
             with self.subTest(n = n, m = m):

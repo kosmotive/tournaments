@@ -167,8 +167,8 @@ class Tournament(models.Model):
     @transaction.atomic
     def test(self):
         tournament = Tournament.load(definition = self.definition, name = 'Test')
-        for participating_user in (User.objects.create(username = f'testuser-{pidx}', password = 'password') for pidx in range(len(self.participants))):
-            participant = Participant.create_for_user(user = participating_user)
+        for participating_name in (f'--testuser-{pidx}' for pidx in range(len(self.participants))):
+            participant = Participant.objects.get_or_create(name = participating_name)[0]
             Participation.objects.create(participant = participant, tournament = tournament, slot_id = Participation.next_slot_id(tournament))
 
         # Initialize the tournament.
@@ -186,8 +186,21 @@ class Tournament(models.Model):
                 # Play the current level, then update the tournament state.
                 for fixture in tournament.current_stage.current_fixtures:
 
-                    for user in tournament.participating_users[:fixture.required_confirmations_count]:
-                        fixture.confirmations.add(user)
+                    # If there are only virtual participants...
+                    if tournament.participating_users.count() == 0:
+                        
+                        # ...and the tournament has a creator, then the creator will confirm the fixture.
+                        if self.creator is not None:
+                            fixture.confirmations.add(self.creator)
+                        
+                        # ...and the tournament has no creator, then the fixture will be confirmed by an arbitrary user.
+                        else:
+                            fixture.confirmations.add(User.objects.first())  # TODO: add test
+
+                    # Otherwise, the participating users will confirm the fixture.
+                    else:
+                        for user in tournament.participating_users[:fixture.required_confirmations_count]:
+                            fixture.confirmations.add(user)
 
                     fixture.score = (fixture.player1.id, fixture.player2.id)
                     fixture.save()
