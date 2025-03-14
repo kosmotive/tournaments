@@ -1,25 +1,23 @@
+import numpy as np
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 
-import numpy as np
-
 from tournaments.models import (
-    split_into_groups,
-    create_division_schedule,
-    parse_placements_str,
-    get_stats,
-    unwrap_list,
-    is_power_of_two,
-    Tournament,
-    Participant,
-    Participation,
-    Mode,
+    Fixture,
     Groups,
     Knockout,
-    Fixture,
+    Mode,
+    Participant,
+    Participation,
+    Tournament,
+    create_division_schedule,
+    get_stats,
+    is_power_of_two,
+    parse_placements_str,
+    split_into_groups,
+    unwrap_list,
 )
-
 
 test_tournament1_yml = \
     """
@@ -189,7 +187,6 @@ def assert_division_schedule_validity(test, schedule, with_returns):
         participants = list(np.unique(sum(schedule, list())))
         n = len(participants)
         A = np.zeros((n, n))
-        I = lambda p: participants.index(p)
         for pairings in schedule:
             matchday_participants = set()
             for p1, p2 in pairings:
@@ -197,7 +194,7 @@ def assert_division_schedule_validity(test, schedule, with_returns):
                 test.assertFalse(p1 in matchday_participants, f'{p1} included multiple times in matchday {pairings}')
                 test.assertFalse(p2 in matchday_participants, f'{p2} included multiple times in matchday {pairings}')
 
-                A[I(p1), I(p2)] += 1
+                A[participants.index(p1), participants.index(p2)] += 1
 
                 matchday_participants.add(p1)
                 matchday_participants.add(p2)
@@ -282,16 +279,26 @@ class ModeTestBase:
 
     def group_fixtures_by_level(self, mode, **filters):
         actual_fixtures = dict()
-        pid = lambda p: None if p is None else p.id
+
+        def __get_participant_id(participant):
+            return None if participant is None else participant.id
+        
         exclude_dict = dict()
         for filter_key, filter_val in dict(filters).items():
             if filter_key.endswith('__ne'):
                 exclude_dict[filter_key[:-4]] = filter_val
                 exclude_dict[filter_key[:-4] + '__isnull'] = False
                 del filters[filter_key]
+
         for fixture in mode.fixtures.filter(**filters).exclude(**exclude_dict).all():
             actual_fixtures.setdefault(fixture.level, list())
-            actual_fixtures[fixture.level].append((pid(fixture.player1), pid(fixture.player2)))
+            actual_fixtures[fixture.level].append(
+                (
+                    __get_participant_id(fixture.player1),
+                    __get_participant_id(fixture.player2),
+                ),
+            )
+
         return actual_fixtures
 
 

@@ -1,0 +1,13 @@
+exclude = [
+    "tournaments/tournaments/migrations/*",
+]
+
+[lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[lint.per-file-ignores]
+"tournaments/tournaments/settings/*" = ["F405", "F403"]
+
+[format]
+quote-style = "single"
+indent-style = "space"

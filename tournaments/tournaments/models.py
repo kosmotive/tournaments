@@ -1,17 +1,15 @@
 import math
-import re
 import random
+import re
 
+import numpy as np
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
-from django.db.models import CheckConstraint, Q, QuerySet, Min, Max
+from django.db.models import CheckConstraint, Max, Min, Q, QuerySet
 from django.db.models.signals import pre_delete
 from django.dispatch import receiver
-
 from polymorphic.models import PolymorphicModel
-
-import numpy as np
 
 
 class Tournament(models.Model):
@@ -47,15 +45,15 @@ class Tournament(models.Model):
             mode_type = stage.pop('mode')
 
             if mode_type == 'groups':
-                mode = Groups.objects.create(**stage)
+                Groups.objects.create(**stage)
 
             elif mode_type == 'knockout':
-                mode = Knockout.objects.create(**stage)
+                Knockout.objects.create(**stage)
 
             elif mode_type == 'division':
                 stage['min_group_size'] = 2
                 stage['max_group_size'] = 32767 ## https://docs.djangoproject.com/en/5.0/ref/models/fields/#positivesmallintegerfield
-                mode = Groups.objects.create(**stage)
+                Groups.objects.create(**stage)
 
             else:
                 raise ValidationError(f'Unknown mode: "{mode_type}".')
@@ -87,7 +85,8 @@ class Tournament(models.Model):
     @transaction.atomic
     def shuffle_participants(self):
         count = self.participations.count()
-        if count == 0: return ## early out, so that min/max operations below are well defined
+        if count == 0:
+            return ## early out, so that min/max operations below are well defined
         new_slot_ids = list(range(count))
         random.shuffle(new_slot_ids)
 
@@ -241,6 +240,9 @@ class Participant(models.Model):
 
     def __str__(self):
         return self.name
+    
+    def __repr__(self):
+        return f'<Participant: {self.name} ({self.id})>'
 
 
 class Participation(models.Model):
@@ -274,7 +276,7 @@ def parse_participants_str_list(participants_str_list):
 
     # Verify that the list of participants is disjoint.
     if len(references) > len(frozenset(references)):
-        raise ValueError(f'list of participants is not disjoint')
+        raise ValueError('list of participants is not disjoint')
 
     return references
 
@@ -287,10 +289,11 @@ def parse_placements_str(placement_str):
         parts = slice_str.split(':')
         parts = [int(part) if len(part) > 0 else None for part in parts]
         assert 1 <= len(parts) <= 3, slice_str
-        if len(parts) == 1: parts = parts + [parts[0] + 1]
+        if len(parts) == 1:
+            parts = parts + [parts[0] + 1]
         placements_slice = slice(*parts)
         return identifier, placements_slice
-    except Exception as error:
+    except Exception:
         raise ValueError(f'cannot parse placement: "{placement_str}"')
 
 
@@ -455,7 +458,8 @@ def get_stats(participant, filters = dict()):
     for fixture in participant.fixtures1.filter(**filters) | participant.fixtures2.filter(**filters):
 
         # Only account for confirmed scores.
-        if not fixture.is_confirmed: continue
+        if not fixture.is_confirmed:
+            continue
         scores = (fixture.score1, fixture.score2)
         row['matches'] += 1
 
@@ -499,7 +503,9 @@ class Groups(Mode):
             for group in groups:
                 for position, (pidx1, pidx2) in enumerate(pairings):
 
-                    if pidx1 >= len(group) or pidx2 >= len(group): continue
+                    if pidx1 >= len(group) or pidx2 >= len(group): 
+                        continue
+
                     Fixture.objects.create(
                         mode     = self,
                         level    = level,
@@ -558,7 +564,8 @@ class Knockout(Mode):
         If the number of participants is not a power of 2, playoff matches are required (incomplete levels of the binary tree).
         The order of participants will account for that if `account_for_playoffs` is True, ensuring that the playoffs will be filled up with the very last participants (lowest ranked).
         """
-        if len(participants) == 0: return list()
+        if len(participants) == 0:
+            return list()
 
         # Check whether the number of participants is a power of 2.
         power_of_two, power_of_two_floor = is_power_of_two(len(participants), ret_floor = True)
@@ -923,12 +930,11 @@ class Fixture(models.Model):
         return None
 
     def __repr__(self):
-        prepr = lambda p: None if p is None else f'{p.username} ({p.id})'
         data = ', '.join([
             f'mode={self.mode}',
             f'level={self.level}',
-            f'player1={prepr(self.player1)}',
-            f'player2={prepr(self.player2)}',
+            f'player1={repr(self.player1)}',
+            f'player2={repr(self.player2)}',
             f'score1={self.score1}',
             f'score2={self.score2}',
             f'confirmations={self.confirmations.count()} / {self.required_confirmations_count}',

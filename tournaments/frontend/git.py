@@ -1,7 +1,7 @@
 import os
 import pathlib
-import subprocess
 import re
+import subprocess
 
 
 def get_head_info():

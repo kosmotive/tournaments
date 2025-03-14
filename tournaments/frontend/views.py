@@ -1,18 +1,17 @@
-from django.contrib.auth import login, authenticate
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth import authenticate, login
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
-from django.http import HttpResponseForbidden, HttpResponse
+from django.http import HttpResponse, HttpResponseForbidden
+from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.views.generic import ListView, View
 from django.views.generic.detail import SingleObjectMixin
 from django.views.generic.edit import FormView
-from django.shortcuts import redirect, render
-from django.urls import reverse
 
 from tournaments import models
 
-from .forms import CreateTournamentForm, UpdateTournamentForm, SignupForm
+from .forms import CreateTournamentForm, SignupForm, UpdateTournamentForm
 from .git import get_head_info
 
 
@@ -95,7 +94,8 @@ class IndexView(VersionInfoMixin, ListView):
         context['finished'] = published_tournaments.filter(podium_size__gte = 1)
 
         context['allstars'] = [models.Participation.objects.filter(podium_position = position).annotate(count = Count('participant__name')) for position in range(3)]
-        if not any(context['allstars']): context['allstars'] = None
+        if not any(context['allstars']):
+            context['allstars'] = None
 
         return context
 
@@ -312,7 +312,7 @@ class ManageParticipantsView(IsCreatorMixin, SingleObjectMixin, VersionInfoMixin
                 participation.slot_id = slot_id0 + pidx
                 participation.save()
             
-            request.session['alert'] = dict(status = 'success', text = f'Attendees have been updated.')
+            request.session['alert'] = dict(status = 'success', text = 'Attendees have been updated.')
         return redirect('manage-participants', pk = self.object.id)
 
     def get_context_data(self, **kwargs):

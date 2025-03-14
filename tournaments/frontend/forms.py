@@ -45,7 +45,7 @@ class CreateTournamentForm(forms.Form):
         try:
             definition = yaml.safe_load(definition_str)
             assert isinstance(definition, dict)
-        except:
+        except:  # noqa: E722
             raise ValidationError('Definition must be supplied in valid YAML.')
 
         # Check for semantic correctness.

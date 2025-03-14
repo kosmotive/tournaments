@@ -1,13 +1,13 @@
 import re
 
 from django.contrib.auth.views import LoginView
-from django.urls import reverse
 from django.test import TestCase
+from django.urls import reverse
+
+from tournaments import models
+from tournaments.tests import _confirm_fixture, test_tournament1_yml
 
 from . import views
-from tournaments import models
-from tournaments.tests import test_tournament1_yml, _confirm_fixture
-
 
 password1 = 'Xz23#!sZ'
 
@@ -44,14 +44,14 @@ class IndexViewTests(TestCase):
         self.assertNotContains(response, 'Finished')
 
     def test_authenticated_draft_of_other_user(self):
-        tournament = models.Tournament.load(definition = test_tournament1_yml, name = 'Test')
+        models.Tournament.load(definition = test_tournament1_yml, name = 'Test')
         self.test_authenticated_empty()
 
     def test_authenticated_draft(self):
         user = models.User.objects.create(username = 'test1')
         self.client.force_login(user)
 
-        tournament = models.Tournament.load(definition = test_tournament1_yml, name = 'Test', creator = user)
+        models.Tournament.load(definition = test_tournament1_yml, name = 'Test', creator = user)
 
         response = self.client.get(reverse('index'))
         self.assertEqual(response.status_code, 200)
@@ -845,7 +845,7 @@ class ManageParticipantsViewTests(TestCase):
             self.assertTrue(models.Participant.objects.filter(name = f'Participant{i}').exists(), f'Participant{i} does not exist.')
 
         # Check that `Participant2` has been deleted.
-        self.assertFalse(models.Participant.objects.filter(name = f'Participant2').exists())
+        self.assertFalse(models.Participant.objects.filter(name = 'Participant2').exists())
 
         # Check that the right, and only the right participants are participating.
         participant_names_actual = [participation.participant.name for participation in self.tournament1.participations.all()]

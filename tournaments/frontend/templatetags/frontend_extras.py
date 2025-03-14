@@ -5,7 +5,6 @@ from django.utils.safestring import mark_safe
 
 from tournaments.models import parse_participants_str_list
 
-
 register = template.Library()
 
 
