@@ -1,5 +1,7 @@
 {% extends "frontend/base.html" %}
 
+{% load capture_tags %}
+
 {% block title %}Manage Attendees{% endblock %}
 
 {% block header %}
@@ -7,7 +9,7 @@
 {% endblock %}
 
 {% block content %}
-<form method="post" action="{% url 'manage-participants' pk=tournament.id %}">
+<form method="post" action="{% url 'manage-participants' pk=tournament.id %}" class="mb-5">
     {% csrf_token %}
     <div class="form-group">
         <label for="participant_names">Attendee Names (one per line)</label>
@@ -16,4 +18,10 @@
     </div>
     <button type="submit" class="btn btn-primary">Save Attendees</button>
 </form>
+
+{% capture silent %}
+<a class="btn btn-secondary" href="{% url 'update-tournament' pk=tournament.id %}" role="button">Manage Tournament</a>
+{% endcapture %}
+
+{% include "frontend/tournament-details.html" with tournament=tournament buttons=capture %}
 {% endblock %}
