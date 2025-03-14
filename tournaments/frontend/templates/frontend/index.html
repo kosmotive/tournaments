@@ -35,7 +35,12 @@
 
                 <li class="list-inline-item">
 
-                    <i class="bi bi-person"></i> {{ result.user }}
+                    {% if result.participant.user %}
+                        <i class="bi bi-person-fill"></i>
+                    {% else %}
+                        <i class="bi bi-person"></i>
+                    {% endif %}
+                    {{ result.participant.name }}
 
                     <span class="badge badge-pill badge-dark">{{ result.count | allstar_badge }}</span>
 
