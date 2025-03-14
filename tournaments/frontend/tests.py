@@ -687,6 +687,14 @@ class TournamentProgressViewTests(TestCase):
         self.assertEqual(self.tournament1.state, 'active')
         self.assertContains(response, '<h2>Preliminaries <small class="text-muted">Current Stage</small></h2>')
 
+    def test_open_without_creator(self):
+        """
+        Successfully starts an open tournament that has no creator (e.g., the `User` was deleted).
+        """
+        self.tournament1.creator = None
+        self.tournament1.save()
+        self.test_open()
+
     def test_post_open(self):
         fixture = models.Fixture.objects.create(mode = self.tournament1.stages.all()[0], level = 0)
         response = self.client.post(

@@ -195,7 +195,7 @@ class Tournament(models.Model):
                         
                         # ...and the tournament has no creator, then the fixture will be confirmed by an arbitrary user.
                         else:
-                            fixture.confirmations.add(User.objects.first())  # TODO: add test
+                            fixture.confirmations.add(User.objects.first())
 
                     # Otherwise, the participating users will confirm the fixture.
                     else:
