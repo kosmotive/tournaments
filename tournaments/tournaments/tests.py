@@ -2,6 +2,7 @@ import numpy as np
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.test import TestCase
+from django_test_migrations.contrib.unittest_case import MigratorTestCase
 
 from tournaments.models import (
     Fixture,
@@ -1787,3 +1788,36 @@ class TournamentTest(TestCase):
         tournament.full_clean()
         tournament.stages.all()[0].full_clean()
         self.assertRaises(ValidationError, tournament.stages.all()[1].full_clean)
+
+
+class MigrationTest_0002_to_0003(MigratorTestCase):
+
+    migrate_from = ('tournaments', '0002_remove_fixture_position_fixture_extras')
+    migrate_to   = ('tournaments', '0003_participant_alter_participation_unique_together_and_more')
+
+    usernames1   = [f'user-{uidx}' for uidx in range(8)]  # Users attending tournament 1
+    usernames2   = [f'user-{uidx}' for uidx in range(4)]  # Users attending tournament 2
+
+    def prepare(self):
+        OldTournament    = self.old_state.apps.get_model('tournaments', 'Tournament')
+        OldParticipation = self.old_state.apps.get_model('tournaments', 'Participation')
+        OldUser          = self.old_state.apps.get_model('auth', 'User')
+
+        tournaments = [
+            OldTournament.objects.create(name = f'Test Cup {tidx}', podium_spec = list())
+            for tidx in range(2)
+        ]
+        self.participation_id_to_user_name = dict()
+        for tournament, usernames in zip(tournaments, [self.usernames1, self.usernames2]):
+            for uidx, username in enumerate(usernames):
+                user = OldUser.objects.get_or_create(username = username, defaults = dict(password = 'password'))[0]
+                participation = OldParticipation.objects.create(tournament = tournament, user = user, slot_id = uidx)
+                self.participation_id_to_user_name[participation.id] = username
+
+    def test_migration(self):
+        NewParticipation = self.new_state.apps.get_model('tournaments', 'Participation')
+
+        for participation_id, username in self.participation_id_to_user_name.items():
+            participation = NewParticipation.objects.get(id = participation_id)
+            self.assertEqual(participation.participant.name, username)
+            self.assertEqual(participation.participant.user.username, username)
