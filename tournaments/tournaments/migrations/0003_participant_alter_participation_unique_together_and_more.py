@@ -9,7 +9,8 @@ def set_participant_from_user(apps, schema_editor):
     Participation = apps.get_model('tournaments', 'Participation')
     Participant = apps.get_model('tournaments', 'Participant')
     for participation in Participation.objects.using(schema_editor.connection.alias).all():
-        participation.participant = Participant.objects.create(user = participation.user, name = participation.user.username)
+        participant, created = Participant.objects.get_or_create(user=participation.user, defaults={'name': participation.user.username})
+        participation.participant = participant
         participation.save()
 
 
